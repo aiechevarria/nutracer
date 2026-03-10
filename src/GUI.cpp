@@ -1,10 +1,6 @@
 #include "GUI.h"
 #include "Logo.cpp"
-#include "Misc.h"
 #include "imgui.h"
-#include <cstddef>
-
-
 
 GUI::GUI () {
     // Setup SDL
@@ -194,8 +190,20 @@ void GUI::renderError(char* message, bool* toggle) {
 }
 
 /**
- * Renders the main trace parser window.
+ * Renders the main workspace. 
+ * 
+ * @param code The code that has been provided with the file, for preview.
+ * @param variables The variables that have been parsed from the code
  */
-void GUI::renderTraceParser() {
+void GUI::renderMainWorkspace(std::string code, std::vector<Variable> variables) {
+    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+
+    // Set a size and position based on the current workspace dimms
+    ImVec2 windowSize(windowWidth, windowHeight);
+    ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+
+    ImGui::Begin("Trace generation", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+    ImGui::End();
 
 }

@@ -10,6 +10,7 @@
 #include "ImGuiFileDialog.h"
 #include "Font.h"
 #include "Misc.h"
+#include "Semantics.h"
 
 // Proportions and placement of each window respective to the workspace
 // Picker window
@@ -46,4 +47,5 @@ public:
     SDL_Window* getWindow();
     void renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state);
     void renderError(char* message, bool* toggle);
+    void renderMainWorkspace(std::string code, std::vector<Variable> variables);
 };

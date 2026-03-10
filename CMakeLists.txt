@@ -12,8 +12,9 @@ include_directories(lib/ImGuiFileDialog)
 
 # NuCachis project source files
 set(PROJECT_SOURCES
-    src/GUI.cpp
+    src/Semantics.cpp
     src/Main.cpp
+    src/GUI.cpp
     src/Parser.cpp
 )
 

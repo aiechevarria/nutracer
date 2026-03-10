@@ -7,4 +7,5 @@
 
 typedef struct {
     std::string inputFile;
+    bool debug = false;
 } AppArgs;

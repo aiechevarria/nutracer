@@ -1,6 +1,9 @@
 #include "Main.h"
 #include "Misc.h"
 #include "Parser.h"
+#include "Semantics.h"
+
+bool debug = false;
 
 /**
  * Parses the CLI arguments.
@@ -14,8 +17,10 @@ AppArgs parseArguments(int argc, char** argv) {
     CLI::App app{APP_NAME " " APP_VERSION "\n" APP_DESC "\n" APP_WEB};
     argv = app.ensure_utf8(argv);
 
-    app.add_option("-c,--config", args.inputFile, "Path to the pseudocode file")
-       ->check(CLI::ExistingFile);
+    app.add_option("-i,--input", args.inputFile, "Path to the input pseudocode file")
+        ->check(CLI::ExistingFile);
+
+    app.add_flag("-d,--debug", args.debug, "Toggles debug information");
 
     try {
         app.parse(argc, argv);
@@ -29,17 +34,23 @@ AppArgs parseArguments(int argc, char** argv) {
 int main(int argc, char** argv) {
     // File paths for the trace and config
     char inputPath[MAX_PATH_LENGTH] = "\0";
-    std::string content;
     bool acceptedError = false;
     ProgramState state = FILE_NOT_SELECTED;
 
-    // Structures
+    // Pseudocode structures
+    std::string code;
+    std::vector<Variable> variables;
+
+    // Arguments
     AppArgs args = parseArguments(argc, argv);
 
     // Copy the config and trace files if they were provided as an argument
     if (!args.inputFile.empty()) {
         strncpy(inputPath, args.inputFile.c_str(), MAX_PATH_LENGTH);
+        state = FILE_SELECTED;
     }
+
+    debug = args.debug;
 
     // Create a new GUI
     GUI* gui = new GUI();
@@ -74,13 +85,13 @@ int main(int argc, char** argv) {
 
             case FILE_SELECTED:
                 // Read the file
-                content = readFileToString(inputPath);
+                code = readFileToString(inputPath);
                 state = FILE_READ;
                 break;
 
             case FILE_READ:
                 // If there is no content throw an error and go back to the file selector
-                if (content.empty()) {
+                if (code.empty()) {
                     gui->renderError((char*) ERROR_FILE_GENERAL, &acceptedError);
                 } else {
                     printf(INFO_FILE_READ);
@@ -94,6 +105,28 @@ int main(int argc, char** argv) {
                 break;
 
             case FILE_VALIDATED:
+                // Extract the variables
+                parseVariables(code, &variables);
+                state = VARIABLES_PARSED;
+                break;
+
+            case VARIABLES_PARSED:
+                // Validate that there are some variables, if not throw error
+                if (variables.empty()) {
+                    gui->renderError((char*) ERROR_PARSE_NOVAR2, &acceptedError);
+                } else {
+                    state = VARIABLES_VALIDATED;
+                }
+
+                if (acceptedError) {
+                    acceptedError = false;
+                    state = FILE_NOT_SELECTED;
+                }
+                break;
+
+            case VARIABLES_VALIDATED:
+                // Render the main workspace
+                gui->renderMainWorkspace(code, variables);
                 break;
 
             default:

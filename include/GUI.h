@@ -13,12 +13,15 @@
 
 // Proportions and placement of each window respective to the workspace
 // Picker window
-#define PICKER_WINDOW_WIDTH  0.60
+#define PICKER_WINDOW_WIDTH  0.70
 #define PICKER_WINDOW_HEIGHT 0.27
+
+#define FILE_PICKER_WINDOW_WIDTH  0.5
+#define FILE_PICKER_WINDOW_HEIGHT 0.5
 
 // Error window
 #define ERROR_WINDOW_WIDTH  0.40
-#define ERROR_WINDOW_HEIGHT 0.20
+#define ERROR_WINDOW_HEIGHT 0.23
 
 #define DEFAULT_TABLE_FLAGS ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_RowBg
 
@@ -41,7 +44,6 @@ public:
     GUI();
     ~GUI();
     SDL_Window* getWindow();
-    void renderPicker(char inputPath[MAX_PATH_LENGTH]);
+    void renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state);
     void renderError(char* message, bool* toggle);
-    void renderTraceParser();                       // TODO
 };

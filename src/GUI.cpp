@@ -1,6 +1,9 @@
 #include "GUI.h"
 #include "Logo.cpp"
+#include "Misc.h"
 #include "imgui.h"
+#include <cstddef>
+
 
 
 GUI::GUI () {
@@ -92,12 +95,10 @@ GLuint GUI::LoadImageFromCSource(const unsigned char* rawData, int width, int he
 
 /**
  * Renders the file picker.
- * @param configPath Pointer to a sufficiently large array of characters for the config path
- * @param tracePath Pointer to a sufficiently large array of characters for the trace path
- * @param freshLaunch If true, displays the app's logo and welcome screen
- * @param clickedLaunch Pointer to a boolean. Toggled true when the user clicks the launch button
+ * @param inputPath Pointer to a sufficiently large array of characters for the input path
+ * @param state Pointer to the current state of the program. Switches to the next assistant step when clicked
  */
-void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH]) {
+void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state) {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     // Set a size and position based on the current workspace dimms
@@ -107,7 +108,7 @@ void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH]) {
     ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver);
     
     // Render the window
-    ImGui::Begin("Welcome to NuTracegen", nullptr, ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Welcome to NuTracegen", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 
     // Center the logo
     ImGui::Image((ImTextureID)(intptr_t)logo, ImVec2(logoData.width / 4, logoData.height / 4));
@@ -117,7 +118,6 @@ void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH]) {
 
     // Group all text
     ImGui::BeginGroup();
-    ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(APP_NAME " (" APP_VERSION ")");
     ImGui::Text(APP_DESC);
     ImGui::Text(APP_WEB);
@@ -131,20 +131,26 @@ void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH]) {
         ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
         IGFD::FileDialogConfig config;
         config.path = '.';
-		ImGuiFileDialog::Instance()->OpenDialog("ChooseInputFile", "Choose Input File", "*", config);
+		ImGuiFileDialog::Instance()->OpenDialog("ChooseInputFile", "Choose Input File", ".ntg", config);
     }
 
     ImGui::SameLine();
     ImGui::SetNextItemWidth(-FLT_MIN);          // Make the input below take all avaiable width
     ImGui::InputText("##InputPicker", inputPath, MAX_PATH_LENGTH);
 
-    // File 
-    if (ImGuiFileDialog::Instance()->Display("ChooseInputFile")) {
+    // File picker dialog
+    if (ImGuiFileDialog::Instance()->Display("ChooseInputFile", ImGuiWindowFlags_NoCollapse, ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             strncpy(inputPath, ImGuiFileDialog::Instance()->GetFilePathName().c_str(), MAX_PATH_LENGTH);
         }
         ImGuiFileDialog::Instance()->Close();
     }
+
+    // Once submit has been clicked
+    if (ImGui::Button("Submit", ImVec2(125.0f, 0.0f))) {
+        *state = FILE_SELECTED;
+    }
+
     ImGui::EndGroup();
 
     ImGui::End();
@@ -163,7 +169,7 @@ void GUI::renderError(char* message, bool* toggle) {
     ImVec2 windowSize(windowWidth * ERROR_WINDOW_WIDTH, windowHeight * ERROR_WINDOW_HEIGHT);
     ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
     ImVec2 windowPos((windowWidth / 2 - windowWidth * ERROR_WINDOW_WIDTH / 2), (windowHeight / 2 - windowHeight * ERROR_WINDOW_HEIGHT / 2));
-    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Once);
 
     ImGui::Begin("Error");
     // Draw a red, 5 times larger than usual exclamation and reset the style after doing so 
@@ -174,7 +180,10 @@ void GUI::renderError(char* message, bool* toggle) {
     ImGui::PopStyleColor();
 
     ImGui::SameLine();
-    ImGui::Text("%s", message);
+    ImGui::BeginGroup();
+    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+    ImGui::TextWrapped("%s", message);
+    ImGui::EndGroup();
 
     ImGui::Separator();
     if (ImGui::Button("Ok")) {
@@ -182,4 +191,11 @@ void GUI::renderError(char* message, bool* toggle) {
     }
 
     ImGui::End();
+}
+
+/**
+ * Renders the main trace parser window.
+ */
+void GUI::renderTraceParser() {
+
 }

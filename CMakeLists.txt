@@ -14,6 +14,7 @@ include_directories(lib/ImGuiFileDialog)
 set(PROJECT_SOURCES
     src/GUI.cpp
     src/Main.cpp
+    src/Parser.cpp
 )
 
 # ImGui source files

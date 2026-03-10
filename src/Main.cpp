@@ -1,4 +1,6 @@
 #include "Main.h"
+#include "Misc.h"
+#include "Parser.h"
 
 /**
  * Parses the CLI arguments.
@@ -27,6 +29,9 @@ AppArgs parseArguments(int argc, char** argv) {
 int main(int argc, char** argv) {
     // File paths for the trace and config
     char inputPath[MAX_PATH_LENGTH] = "\0";
+    std::string content;
+    bool acceptedError = false;
+    ProgramState state = FILE_NOT_SELECTED;
 
     // Structures
     AppArgs args = parseArguments(argc, argv);
@@ -61,7 +66,41 @@ int main(int argc, char** argv) {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        gui->renderPicker(inputPath);
+        // Main logic
+        switch(state) {
+            case FILE_NOT_SELECTED:
+                gui->renderPicker(inputPath, &state);
+                break;
+
+            case FILE_SELECTED:
+                // Read the file
+                content = readFileToString(inputPath);
+                state = FILE_READ;
+                break;
+
+            case FILE_READ:
+                // If there is no content throw an error and go back to the file selector
+                if (content.empty()) {
+                    gui->renderError((char*) ERROR_FILE_GENERAL, &acceptedError);
+                } else {
+                    printf(INFO_FILE_READ);
+                    state = FILE_VALIDATED;
+                }
+
+                if (acceptedError) {
+                    acceptedError = false;
+                    state = FILE_NOT_SELECTED;
+                }
+                break;
+
+            case FILE_VALIDATED:
+                break;
+
+            default:
+                state = FILE_NOT_SELECTED;
+                printf(ERROR_ASSIST_GENERAL);
+                break;
+        }
 
         // Render the frame afterwards
         ImGui::Render();

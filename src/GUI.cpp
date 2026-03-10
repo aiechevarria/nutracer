@@ -1,6 +1,9 @@
 #include "GUI.h"
 #include "Logo.cpp"
+#include "Misc.h"
 #include "imgui.h"
+
+ImFont* defaultFont;
 
 GUI::GUI () {
     // Setup SDL
@@ -33,7 +36,8 @@ GUI::GUI () {
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontFromMemoryCompressedBase85TTF(robottoFont_compressed_data_base85, 16.0f);
+    defaultFont = io.Fonts->AddFontDefault();
+    io.FontDefault = io.Fonts->AddFontFromMemoryCompressedBase85TTF(robottoFont_compressed_data_base85, 16.0f);
 }
 
 GUI::~GUI () {
@@ -193,9 +197,12 @@ void GUI::renderError(char* message, bool* toggle) {
  * Renders the main workspace. 
  * 
  * @param code The code that has been provided with the file, for preview.
- * @param variables The variables that have been parsed from the code
+ * @param trace The trace that has been generated
+ * @param variables The variables that have been parsed from the code.
+ * @param settings The settings of the generator.
+ * @param run If the user has clicked on the run button or not
  */
-void GUI::renderMainWorkspace(std::string code, std::vector<Variable> variables) {
+void GUI::renderMainWorkspace(std::string code, std::string* trace, std::vector<Variable>* variables, GeneratorSettings* settings, bool* run) {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     // Set a size and position based on the current workspace dimms
@@ -203,7 +210,108 @@ void GUI::renderMainWorkspace(std::string code, std::vector<Variable> variables)
     ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
 
-    ImGui::Begin("Trace generation", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
-    ImGui::End();
+    ImGui::Begin("Trace generation", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    // Render the left side of the window
+    ImGui::BeginChild("LeftPanel", ImVec2(windowWidth / 2, 0), true);
+    ImVec2 leftDimms = ImGui::GetContentRegionAvail();
+    
+    // Render the code in a bordered box
+    ImGui::Text("Code Preview:");
+    ImGui::PushFont(defaultFont);               // Switch to the default monospace font
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    ImGui::InputTextMultiline("##code", (char*) code.c_str(), code.size() + 1, ImVec2(leftDimms.x, leftDimms.y / 3), ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleVar();
+    ImGui::PopFont();
 
+    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+    
+    // Render the variable table
+    ImGui::Text("Variable configuration");
+    ImGui::Text("In hexadecimal, set the addresses of the variables listed below before generating a trace:");
+
+    // Render the variable table
+    if (ImGui::BeginTable("VariableTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg )) {
+        // Headers
+        ImGui::TableSetupColumn("Variable Name");
+        ImGui::TableSetupColumn("Datatype");
+        ImGui::TableSetupColumn("Address (In hexadecimal)");
+        ImGui::TableHeadersRow();
+
+        // Populate rows
+        for (Variable& var : *variables) {
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text("%s", var.name.c_str());
+
+            ImGui::TableNextColumn();
+            ImGui::Text("%s", DataTypeToString(var.type).c_str());
+
+            ImGui::TableNextColumn();
+            ImGui::Text("0x");
+            ImGui::SameLine();
+            ImGui::InputScalar(("##" + var.name).c_str(), ImGuiDataType_U64, &var.address, nullptr, nullptr, "%016llX", ImGuiInputTextFlags_CharsHexadecimal);
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+
+    ImGui::Text("Generation settings");
+    ImGui::Checkbox("Add comments to the trace", &settings->addComments);
+
+    if (ImGui::Button("Destination file", ImVec2(125.0f, 0.0f))) {
+        ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
+        IGFD::FileDialogConfig config;
+        config.path = '.';
+		ImGuiFileDialog::Instance()->OpenDialog("ChooseDestFile", "Choose Dest File", ".vca", config);
+    }
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(-FLT_MIN);          // Make the input below take all avaiable width
+    ImGui::InputText("##DestPicker", settings->destPath, MAX_PATH_LENGTH);
+
+    // File picker dialog
+    if (ImGuiFileDialog::Instance()->Display("ChooseDestFile", ImGuiWindowFlags_NoCollapse, ImVec2(0.0f, 0.0f), ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            strncpy(settings->destPath, ImGuiFileDialog::Instance()->GetFilePathName().c_str(), MAX_PATH_LENGTH);
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // Push the buttons to the bottom
+    ImVec2 leftAvail = ImGui::GetContentRegionAvail();
+    ImGui::Dummy(ImVec2(0.0f, leftAvail.y - ImGui::GetFrameHeight() - 20.0f));
+
+    if (ImGui::Button("Generate Trace", ImVec2(125.0f, 0.0f))) *run = true;
+    ImGui::SameLine();
+    ImGui::BeginDisabled(trace->empty());
+    ImGui::Button("Save Trace");
+    ImGui::EndDisabled();
+
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    // Render the right side of the window
+    ImGui::BeginChild("RightPanel", ImVec2(0, 0), true);
+    ImVec2 rightDimms = ImGui::GetContentRegionAvail();
+    ImVec2 rightAvail = ImGui::GetContentRegionAvail();
+
+
+    ImGui::Text("Code Preview:");
+    ImGui::PushFont(defaultFont);               // Switch to the default monospace font
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    ImGui::InputTextMultiline("##trace", (char*) trace->c_str(), trace->size() + TRACE_BUFFER_ADDITIONAL_SPACE, ImVec2(rightAvail.x, rightAvail.y - 20.0f));
+    ImGui::PopStyleVar();
+    ImGui::PopFont();
+
+    ImGui::EndChild();
+
+    ImGui::End();
 }

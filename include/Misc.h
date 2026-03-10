@@ -19,6 +19,7 @@
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 #define MAX_PATH_LENGTH 512
+#define TRACE_BUFFER_ADDITIONAL_SPACE   1000
 
 // Info messages
 #define INFO_FILE_READ              "Info: File successfully read\n"
@@ -49,3 +50,8 @@ typedef enum {
     VARIABLES_VALIDATED,
     PROGRAM_STATE_COUNT
 } ProgramState;
+
+typedef struct {
+    char* destPath;
+    bool addComments;
+} GeneratorSettings;

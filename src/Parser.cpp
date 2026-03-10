@@ -94,7 +94,7 @@ bool parseVariables(std::string text, std::vector<Variable>* variables) {
                 if (match.size() >= 2) {
                     // Capture the name and store the variable
                     std::string varName = match[1];
-                    variables->push_back(Variable{0, varName, type});
+                    variables->push_back(Variable{0, varName, (DataType) d});
 
                     if(debug) printf("Debug: Found variable with name=%s, type=%s\n", varName.c_str(), DataTypeToString(type).c_str());
                 }

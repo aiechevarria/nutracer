@@ -34,11 +34,18 @@ AppArgs parseArguments(int argc, char** argv) {
 int main(int argc, char** argv) {
     // File paths for the trace and config
     char inputPath[MAX_PATH_LENGTH] = "\0";
-    bool acceptedError = false;
     ProgramState state = FILE_NOT_SELECTED;
+    GeneratorSettings settings;
+    bool acceptedError = false;
+    bool isReady = false;           // If the user has chosen to generate the trace
+
+    // Set up settings
+    settings.addComments = true;
+    settings.destPath = (char*) malloc(sizeof(char) * MAX_PATH_LENGTH + 1);
 
     // Pseudocode structures
     std::string code;
+    std::string trace;
     std::vector<Variable> variables;
 
     // Arguments
@@ -126,7 +133,7 @@ int main(int argc, char** argv) {
 
             case VARIABLES_VALIDATED:
                 // Render the main workspace
-                gui->renderMainWorkspace(code, variables);
+                gui->renderMainWorkspace(code, &trace, &variables, &settings, &isReady);
                 break;
 
             default:
@@ -143,6 +150,8 @@ int main(int argc, char** argv) {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
+
+    free(settings.destPath);
     
     return 0;
 }

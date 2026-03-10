@@ -1,5 +1,11 @@
 #include "Semantics.h"
 
+/**
+ * Maps a DataType to a string. 
+ * 
+ * @param type The DataType.
+ * @return std::string The string that it relates to.
+ */
 std::string DataTypeToString(DataType type) {
     switch (type)
     {

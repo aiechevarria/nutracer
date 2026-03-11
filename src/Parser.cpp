@@ -64,6 +64,24 @@ std::string readFileToString(char inputPath[MAX_PATH_LENGTH]) {
 }
 
 /**
+ * Stores the string in a filepath.
+ * 
+ * @param filePath The path to the file.
+ * @param content The content to store.
+ * @return true if ok, false if error
+ */
+bool writeStringToFile(char* filePath, std::string& content) {
+    FILE* file = fopen(filePath, "w");
+
+    if (file == NULL) return false;
+
+    fwrite(content.c_str(), 1, content.size(), file);
+
+    fclose(file);
+    return true;
+}
+
+/**
  * Extracts the variables from the pseudocode.
  * @param text The text to extract the variables from
  * @param variables A vector that stores all variables in the order they have been parsed

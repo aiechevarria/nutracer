@@ -46,5 +46,6 @@ public:
     SDL_Window* getWindow();
     void renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state);
     void renderError(char* message, bool* toggle);
-    void renderMainWorkspace(std::string code, std::string* trace, std::vector<Variable>* variables, GeneratorSettings* settings, bool* run);
+    void renderInfo(char* message, bool* toggle);
+    void renderMainWorkspace(std::string code, std::string* trace, std::vector<Variable>* variables, GeneratorSettings* settings, ProgramState* state);
 };

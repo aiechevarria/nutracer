@@ -147,9 +147,7 @@ void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state) {
     }
 
     // Once submit has been clicked
-    if (ImGui::Button("Submit", ImVec2(125.0f, 0.0f))) {
-        *state = FILE_SELECTED;
-    }
+    if (ImGui::Button("Submit", ImVec2(125.0f, 0.0f))) *state = READ_FILE;
 
     ImGui::EndGroup();
 
@@ -194,6 +192,43 @@ void GUI::renderError(char* message, bool* toggle) {
 }
 
 /**
+ * Displays an info box with the provided message.
+ * 
+ * @param message The message to display
+ * @param toggle Boolean variable to toggle when the close button is pressed
+ */
+void GUI::renderInfo(char* message, bool* toggle) {
+    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+
+    // Set a size and position based on the current workspace dimms
+    ImVec2 windowSize(windowWidth * ERROR_WINDOW_WIDTH, windowHeight * ERROR_WINDOW_HEIGHT);
+    ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+    ImVec2 windowPos((windowWidth / 2 - windowWidth * ERROR_WINDOW_WIDTH / 2), (windowHeight / 2 - windowHeight * ERROR_WINDOW_HEIGHT / 2));
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Once);
+
+    ImGui::Begin("Information");
+    // Draw a red, 5 times larger than usual exclamation and reset the style after doing so 
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.3f, 0.9f, 1.0f)); 
+    ImGui::SetWindowFontScale(5.0f); 
+    ImGui::Text("i");
+    ImGui::SetWindowFontScale(1.0f);
+    ImGui::PopStyleColor();
+
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+    ImGui::TextWrapped("%s", message);
+    ImGui::EndGroup();
+
+    ImGui::Separator();
+    if (ImGui::Button("Ok")) {
+        *toggle = !*toggle;
+    }
+
+    ImGui::End();
+}
+
+/**
  * Renders the main workspace. 
  * 
  * @param code The code that has been provided with the file, for preview.
@@ -202,7 +237,7 @@ void GUI::renderError(char* message, bool* toggle) {
  * @param settings The settings of the generator.
  * @param run If the user has clicked on the run button or not
  */
-void GUI::renderMainWorkspace(std::string code, std::string* trace, std::vector<Variable>* variables, GeneratorSettings* settings, bool* run) {
+void GUI::renderMainWorkspace(std::string code, std::string* trace, std::vector<Variable>* variables, GeneratorSettings* settings, ProgramState* state) {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     // Set a size and position based on the current workspace dimms
@@ -252,7 +287,9 @@ void GUI::renderMainWorkspace(std::string code, std::string* trace, std::vector<
             ImGui::TableNextColumn();
             ImGui::Text("0x");
             ImGui::SameLine();
+            ImGui::PushFont(defaultFont);               // Switch to the default monospace font
             ImGui::InputScalar(("##" + var.name).c_str(), ImGuiDataType_U64, &var.address, nullptr, nullptr, "%016llX", ImGuiInputTextFlags_CharsHexadecimal);
+            ImGui::PopFont();
         }
 
         ImGui::EndTable();
@@ -263,6 +300,11 @@ void GUI::renderMainWorkspace(std::string code, std::string* trace, std::vector<
     ImGui::Dummy(ImVec2(0.0f, 15.0f));
 
     ImGui::Text("Generation settings");
+
+    ImGui::Text("Page Base Address (must match page_base_address in the Nucachis config) 0x");
+    ImGui::SameLine();
+    ImGui::InputScalar("## BaseSimAddr", ImGuiDataType_U64, &settings->baseAddr, nullptr, nullptr, "%016llX", ImGuiInputTextFlags_CharsHexadecimal);
+
     ImGui::Checkbox("Add comments to the trace", &settings->addComments);
 
     if (ImGui::Button("Destination file", ImVec2(125.0f, 0.0f))) {
@@ -288,11 +330,9 @@ void GUI::renderMainWorkspace(std::string code, std::string* trace, std::vector<
     ImVec2 leftAvail = ImGui::GetContentRegionAvail();
     ImGui::Dummy(ImVec2(0.0f, leftAvail.y - ImGui::GetFrameHeight() - 20.0f));
 
-    if (ImGui::Button("Generate Trace", ImVec2(125.0f, 0.0f))) *run = true;
+    if (ImGui::Button("Generate Trace", ImVec2(125.0f, 0.0f))) *state = GENERATE_TRACE;
     ImGui::SameLine();
-    ImGui::BeginDisabled(trace->empty());
-    ImGui::Button("Save Trace");
-    ImGui::EndDisabled();
+    ImGui::BeginDisabled(trace->empty()); if (ImGui::Button("Save Trace")) *state = SAVE_TRACE; ImGui::EndDisabled();
 
     ImGui::EndChild();
 
@@ -304,10 +344,10 @@ void GUI::renderMainWorkspace(std::string code, std::string* trace, std::vector<
     ImVec2 rightAvail = ImGui::GetContentRegionAvail();
 
 
-    ImGui::Text("Code Preview:");
+    ImGui::Text("Trace Preview:");
     ImGui::PushFont(defaultFont);               // Switch to the default monospace font
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::InputTextMultiline("##trace", (char*) trace->c_str(), trace->size() + TRACE_BUFFER_ADDITIONAL_SPACE, ImVec2(rightAvail.x, rightAvail.y - 20.0f));
+    ImGui::InputTextMultiline("##trace", (char*) trace->c_str(), trace->size() + TRACE_BUFFER_ADDITIONAL_SPACE, ImVec2(rightAvail.x, rightAvail.y - 20.0f), ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleVar();
     ImGui::PopFont();
 

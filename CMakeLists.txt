@@ -14,6 +14,7 @@ include_directories(lib/ImGuiFileDialog)
 set(PROJECT_SOURCES
     src/Semantics.cpp
     src/Main.cpp
+    src/Interpreter.cpp
     src/GUI.cpp
     src/Parser.cpp
 )

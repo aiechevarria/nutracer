@@ -1,7 +1,4 @@
 #include "Main.h"
-#include "Misc.h"
-#include "Parser.h"
-#include "Semantics.h"
 
 bool debug = false;
 
@@ -34,13 +31,14 @@ AppArgs parseArguments(int argc, char** argv) {
 int main(int argc, char** argv) {
     // File paths for the trace and config
     char inputPath[MAX_PATH_LENGTH] = "\0";
-    ProgramState state = FILE_NOT_SELECTED;
+    ProgramState state = PICK_FILE;
     GeneratorSettings settings;
     bool acceptedError = false;
     bool isReady = false;           // If the user has chosen to generate the trace
 
     // Set up settings
     settings.addComments = true;
+    settings.baseAddr = 0x8000000;
     settings.destPath = (char*) malloc(sizeof(char) * MAX_PATH_LENGTH + 1);
 
     // Pseudocode structures
@@ -54,7 +52,7 @@ int main(int argc, char** argv) {
     // Copy the config and trace files if they were provided as an argument
     if (!args.inputFile.empty()) {
         strncpy(inputPath, args.inputFile.c_str(), MAX_PATH_LENGTH);
-        state = FILE_SELECTED;
+        state = READ_FILE;
     }
 
     debug = args.debug;
@@ -86,58 +84,78 @@ int main(int argc, char** argv) {
 
         // Main logic
         switch(state) {
-            case FILE_NOT_SELECTED:
+            case PICK_FILE:
                 gui->renderPicker(inputPath, &state);
                 break;
 
-            case FILE_SELECTED:
+            case READ_FILE:
                 // Read the file
                 code = readFileToString(inputPath);
-                state = FILE_READ;
+                state = VALIDATE_FILE;
                 break;
 
-            case FILE_READ:
+            case VALIDATE_FILE:
                 // If there is no content throw an error and go back to the file selector
                 if (code.empty()) {
                     gui->renderError((char*) ERROR_FILE_GENERAL, &acceptedError);
                 } else {
                     printf(INFO_FILE_READ);
-                    state = FILE_VALIDATED;
+                    state = PARSE_VARIABLES;
                 }
 
                 if (acceptedError) {
                     acceptedError = false;
-                    state = FILE_NOT_SELECTED;
+                    state = PICK_FILE;
                 }
                 break;
 
-            case FILE_VALIDATED:
+            case PARSE_VARIABLES:
                 // Extract the variables
                 parseVariables(code, &variables);
-                state = VARIABLES_PARSED;
+                state = VALIDATE_VARIABLES;
                 break;
 
-            case VARIABLES_PARSED:
+            case VALIDATE_VARIABLES:
                 // Validate that there are some variables, if not throw error
                 if (variables.empty()) {
                     gui->renderError((char*) ERROR_PARSE_NOVAR2, &acceptedError);
                 } else {
-                    state = VARIABLES_VALIDATED;
+                    state = MAIN_WORKSPACE;
                 }
 
                 if (acceptedError) {
                     acceptedError = false;
-                    state = FILE_NOT_SELECTED;
+                    state = PICK_FILE;
                 }
                 break;
 
-            case VARIABLES_VALIDATED:
+            case MAIN_WORKSPACE:
                 // Render the main workspace
-                gui->renderMainWorkspace(code, &trace, &variables, &settings, &isReady);
+                gui->renderMainWorkspace(code, &trace, &variables, &settings, &state);
+                break;
+            case GENERATE_TRACE:
+                // Parse all the code and return to the main workspace
+                interpretCode(code, &trace, &variables, &settings);
+                state = MAIN_WORKSPACE;
+                break;
+
+            case SAVE_TRACE:
+                if (settings.destPath[0] == '\0') {
+                    gui->renderError((char*) ERROR_FILE_SAVEPATH, &acceptedError);
+                } else if (!writeStringToFile(settings.destPath, trace)) {
+                    gui->renderError((char*) ERROR_FILE_SAVE, &acceptedError);
+                } else {
+                    gui->renderInfo((char*) INFO_FILE_SAVED, &acceptedError);
+                }
+
+                if (acceptedError) {
+                    acceptedError = false;
+                    state = MAIN_WORKSPACE;
+                }
                 break;
 
             default:
-                state = FILE_NOT_SELECTED;
+                state = PICK_FILE;
                 printf(ERROR_ASSIST_GENERAL);
                 break;
         }

@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <regex>
 #include <cassert>
+#include <unordered_map>
 #include <math.h>
 
 // App config
@@ -19,17 +20,20 @@
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 #define MAX_PATH_LENGTH 512
-#define TRACE_BUFFER_ADDITIONAL_SPACE   1000
+#define TRACE_BUFFER_ADDITIONAL_SPACE   1000            // TODO Does this even work ?
 
 // Info messages
 #define INFO_FILE_READ              "Info: File successfully read\n"
+#define INFO_FILE_SAVED             "File has successfully been saved!\n"
 
 // Error Messages
 // Files
-#define ERROR_FILE_OPEN             "Error: Failed to open file.\n"
+#define ERROR_FILE_OPEN             "Error: Failed to open file or file descriptor.\n"
 #define ERROR_FILE_READ             "Error: Could not read the full file.\n"
 #define ERROR_FILE_EMPTY            "Error: The input file is empty.\n"
 #define ERROR_FILE_GENERAL          "Something went wrong while trying to read the file. Check the console for more information.\n"
+#define ERROR_FILE_SAVE             "Something went wrong while trying to write the file. Do you have permissions to write the file ?.\n"
+#define ERROR_FILE_SAVEPATH         "The save path is empty. Please, configure a save path first.\n"
 
 // Parser
 #define ERROR_PARSE_NOVAR           "Error: No variables have been found on the input file.\n"
@@ -42,16 +46,19 @@ extern bool debug;
 
 // State in which the program / assistant is in
 typedef enum {
-    FILE_NOT_SELECTED,
-    FILE_SELECTED,
-    FILE_READ,
-    FILE_VALIDATED,
-    VARIABLES_PARSED,
-    VARIABLES_VALIDATED,
+    PICK_FILE,
+    READ_FILE,
+    VALIDATE_FILE,
+    PARSE_VARIABLES,
+    VALIDATE_VARIABLES,
+    MAIN_WORKSPACE,
+    GENERATE_TRACE,
+    SAVE_TRACE,
     PROGRAM_STATE_COUNT
 } ProgramState;
 
 typedef struct {
+    unsigned long baseAddr;     // NuCachis inits memory addresses with incremental numbers starting from the base address. This ensures correctness with the results
     char* destPath;
     bool addComments;
 } GeneratorSettings;

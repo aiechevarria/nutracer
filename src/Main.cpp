@@ -1,7 +1,6 @@
 #include "Main.h"
 
 bool debug = false;
-char* errorMessage;
 
 /**
  * Parses the CLI arguments.
@@ -34,13 +33,13 @@ int main(int argc, char** argv) {
     char inputPath[MAX_PATH_LENGTH] = "\0";
     ProgramState state = PICK_FILE;
     GeneratorSettings settings;
-    bool acceptedError = false;     // TODO REMOVE THIS AND RETHINK THE ERRORS
+    string errorMessage;
     bool errorHappened = false;
     bool isReady = false;           // If the user has chosen to generate the trace
 
     // Set up settings
     settings.addComments = true;
-    settings.baseAddr = 0x8000000;
+    settings.baseAddr = 0x8000000;  // TODO Read this from the config file
     settings.destPath = (char*) malloc(sizeof(char) * MAX_PATH_LENGTH + 1);
 
     // Pseudocode structures
@@ -92,42 +91,37 @@ int main(int argc, char** argv) {
 
             case READ_FILE:
                 // Read the file
-                code = readFileToString(inputPath);
-                state = VALIDATE_FILE;
-                break;
-
-            case VALIDATE_FILE:
-                // If there is no content throw an error and go back to the file selector
-                if (code.empty()) {
-                    gui->renderError( ERROR_FILE_GENERAL, &acceptedError);
+                if (!errorHappened) {
+                    try {
+                        code = readFileToString(inputPath);
+                        state = PARSE_VARIABLES;
+                    } catch (const runtime_error& e) {
+                        errorMessage = e.what();
+                        fprintf(stderr, "%s", errorMessage.c_str());
+                        errorHappened = true;
+                    }
                 } else {
-                    printf(INFO_FILE_READ);
-                    state = PARSE_VARIABLES;
-                }
+                    gui->renderError(errorMessage.c_str(), &errorHappened);
 
-                if (acceptedError) {
-                    acceptedError = false;
-                    state = PICK_FILE;
+                    // If the user has toggled the error message, return to the previous menu
+                    if (!errorHappened) state = PICK_FILE;
                 }
                 break;
 
             case PARSE_VARIABLES:
-                // Extract the variables
-                parseVariables(code, &variables);
-                state = VALIDATE_VARIABLES;
-                break;
-
-            case VALIDATE_VARIABLES:
-                // Validate that there are some variables, if not throw error
-                if (variables.empty()) {
-                    gui->renderError(ERROR_PARSE_NOVAR2, &acceptedError);
+                // Parse the variables
+                if (!errorHappened) {
+                    try {
+                        parseVariables(code, &variables);
+                        state = MAIN_WORKSPACE;
+                    } catch (const runtime_error& e) {
+                        errorMessage = e.what();
+                        fprintf(stderr, "%s", errorMessage.c_str());
+                        errorHappened = true;
+                    }
                 } else {
-                    state = MAIN_WORKSPACE;
-                }
-
-                if (acceptedError) {
-                    acceptedError = false;
-                    state = PICK_FILE;
+                    gui->renderError(errorMessage.c_str(), &errorHappened);
+                    if (!errorHappened) state = PICK_FILE; // If the user has toggled the error message, return to the previous menu
                 }
                 break;
 
@@ -143,33 +137,36 @@ int main(int argc, char** argv) {
                         state = MAIN_WORKSPACE;
                     } catch (const runtime_error& e) {
                         errorMessage = (char*) e.what();
-                        printf("%s", errorMessage);
+                        fprintf(stderr, "%s", errorMessage.c_str());
                         errorHappened = true;
                     }
                 } else {
-                    gui->renderError(errorMessage, &errorHappened);
+                    gui->renderError(errorMessage.c_str(), &errorHappened);
                     trace.clear();
                 }
                 break;
 
             case SAVE_TRACE:
-                if (settings.destPath[0] == '\0') {
-                    gui->renderError(ERROR_FILE_SAVEPATH, &acceptedError);
-                } else if (!writeStringToFile(settings.destPath, trace)) {
-                    gui->renderError(ERROR_FILE_SAVE, &acceptedError);
+                if (!errorHappened) {
+                    // Try generating the trace
+                    try {
+                        writeStringToFile(settings.destPath, trace);
+                        state = MAIN_WORKSPACE;
+                    } catch (const runtime_error& e) {
+                        errorMessage = (char*) e.what();
+                        fprintf(stderr, "%s", errorMessage.c_str());
+                        errorHappened = true;
+                    }
                 } else {
-                    gui->renderInfo(INFO_FILE_SAVED, &acceptedError);
-                }
-
-                if (acceptedError) {
-                    acceptedError = false;
-                    state = MAIN_WORKSPACE;
+                    gui->renderError(errorMessage.c_str(), &errorHappened);
+                    if (!errorHappened) state = MAIN_WORKSPACE; // If the user has toggled the error message, return to the previous menu
                 }
                 break;
 
             default:
-                state = PICK_FILE;
-                printf(ERROR_ASSIST_GENERAL);
+                errorHappened = true;
+                gui->renderError(ERROR_ASSIST_GENERAL, &errorHappened);
+                if (!errorHappened) state = PICK_FILE;
                 break;
         }
 

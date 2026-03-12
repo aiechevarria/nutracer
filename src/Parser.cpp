@@ -40,8 +40,7 @@ string readFileToString(char inputPath[MAX_PATH_LENGTH]) {
     
     // Validate the file has been opened
     if (!file) {
-        printf(ERROR_FILE_OPEN);
-        return result;
+        throw runtime_error(ERROR_FILE_OPEN);
     }
 
     while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
@@ -50,16 +49,19 @@ string readFileToString(char inputPath[MAX_PATH_LENGTH]) {
 
     // Validate no error has happened
     if (ferror(file)) {
-        printf(ERROR_FILE_READ);
         result.clear();
         fclose(file);
-        return result;
+        throw runtime_error(ERROR_FILE_READ);
     }
 
     // Validate the file is not empty
-    if (result.empty()) printf(ERROR_FILE_EMPTY);
+    if (result.empty())  {
+        fclose(file);
+        throw runtime_error(ERROR_FILE_EMPTY);
+    }
 
     fclose(file);
+    printf("%s", INFO_FILE_READ);
     return result;
 }
 
@@ -68,26 +70,28 @@ string readFileToString(char inputPath[MAX_PATH_LENGTH]) {
  * 
  * @param filePath The path to the file.
  * @param content The content to store.
- * @return true if ok, false if error
  */
-bool writeStringToFile(char* filePath, string& content) {
+void writeStringToFile(char* filePath, string& content) {
+    // Check the file path is not empty
+    if (filePath[0] == '\0') throw runtime_error(ERROR_FILE_SAVE_EMPTY);
+
     FILE* file = fopen(filePath, "w");
 
-    if (file == NULL) return false;
+    if (file == NULL) throw runtime_error(ERROR_FILE_SAVE_EMPTY);
 
     fwrite(content.c_str(), 1, content.size(), file);
 
     fclose(file);
-    return true;
+
+    printf("%s", INFO_FILE_SAVED);
 }
 
 /**
  * Extracts the variables from the pseudocode.
  * @param text The text to extract the variables from
  * @param variables A vector that stores all variables in the order they have been parsed
- * @return True if the process suceeded, false if it failed.
  */
-bool parseVariables(string text, vector<Variable>* variables) {
+void parseVariables(string text, vector<Variable>* variables) {
     // For a given datatype, check if the text has any occurences
     // For instance, get all the lines that have "int "
     // Once all the matches have been fetched, crop the datatype and the space until a ; [ = or space is met. That is the variable name
@@ -120,12 +124,7 @@ bool parseVariables(string text, vector<Variable>* variables) {
         }
     }
 
-    if (variables->empty()) {
-        printf(ERROR_PARSE_NOVAR);
-        return false;
-    } 
-
-    return true;
+    if (variables->empty()) throw runtime_error(ERROR_PARSE_NOVAR);
 }
 
 /**

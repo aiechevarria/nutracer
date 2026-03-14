@@ -162,6 +162,29 @@ void preProcessCode(string* code) {
 }
 
 /**
+ * Finds the bracket that closes startBracket.
+ * 
+ * @param code The code to parse
+ * @param startBracket The position of the start bracket.
+ * @return size_t The position of the closing bracket, or -1 if error.
+ */
+size_t findClosingBracket(string code, size_t startBracket) {
+    // Bracket counters
+    int bracketCount = 0;
+
+    // Start scanning from the opening bracket
+    for (size_t i = startBracket; i < code.length(); ++i) {
+        // Count bracket openings and closings
+        if (code[i] == '{') bracketCount++;
+        else if (code[i] == '}') bracketCount--;
+
+        if (bracketCount == 0) return i;
+    }
+
+    return -1;
+}
+
+/**
  * Fetches the next logical unit (statement or for) from the code.
  *
  * @param code A pointer to the code. Elements will get removed from it.
@@ -176,39 +199,24 @@ string extractNextUnit(string* code) {
     // Check if it starts with for
     if (code->substr(0, 3) == "for") {
         // Find the first bracket
-        size_t openBracePos = code->find('{');
+        size_t openBracketPos = code->find('{');
         // If there are no brackets, print an error and return nothing. This case should have been handled by the preprocessor.
-        if (openBracePos == string::npos) {
+        if (openBracketPos == string::npos) {
             printf(ERROR_PARSE_FOR);
             return "";
         }
-        
-        // Bracket counters
-        int braceCount = 0;
-        size_t endPos = 0;
 
-        // Start scanning from the opening brace
-        for (size_t i = openBracePos; i < code->length(); ++i) {
-            // Count brace openings and closings
-            if ((*code)[i] == '{') braceCount++;
-
-            else if ((*code)[i] == '}') braceCount--;
-
-            if (braceCount == 0) {
-                endPos = i;
-                break;
-            }
-        }
+        size_t endPos = findClosingBracket(*code, openBracketPos);
 
         // Extract everything from the start of for to the closing bracket
         unit = code->substr(0, endPos + 1);
         code->erase(0, endPos + 1);
     } else {
         // Standard statement: extract up to the first semicolon
-        size_t semiColonPos = code->find(';');
-        if (semiColonPos != string::npos) {
-            unit = code->substr(0, semiColonPos + 1);
-            code->erase(0, semiColonPos + 1);
+        size_t semicolonPos = code->find(';');
+        if (semicolonPos != string::npos) {
+            unit = code->substr(0, semicolonPos + 1);
+            code->erase(0, semicolonPos + 1);
         }
     }
 
@@ -246,6 +254,7 @@ void extractOperandInformation(string unit, OperandType ot, Operation* op, vecto
         // Save a pointer to the variable
         op->oprState[ot] = OPRS_VARIABLE;
         op->operands[ot] = (uintptr_t) getVariableByName(vars, unit.substr(0, startBracket));
+        if ((op->operands[ot]) == (uintptr_t) nullptr) throw runtime_error(ERROR_UNIDENTIFIED_VAR + unit);
 
         if (startBracket == string::npos) {
             // If it is not indexed, flag it
@@ -382,6 +391,9 @@ void processOperation(string unit, vector<Operation>* ops, vector<Variable>* var
         newOp.oprState[OPR_OP2] = OPRS_UNUSED;
     }
 
+    // Add the comment
+    newOp.comments = unit;
+
     // Insert the operation into the list at the given position
     ops->insert(ops->begin() + index, newOp);
 }
@@ -397,10 +409,11 @@ void processOperation(string unit, vector<Operation>* ops, vector<Variable>* var
  */
 void processConditional(string unit, vector<Operation>* ops, vector<Variable>* vars, int index) {
     Operation newOp;
-    string op1, op2;                                // The extracted operand text
+    string op1, op2;                                    // The extracted operand text
     size_t opPosition;
+    newOp.opType = OP_BRANCH;
     newOp.operands[OPR_DESTINATION] = 0;
-    newOp.indexState[OPR_DESTINATION] = OPRS_UNUSED;      // Dest always point to a given position, cannot be indexed
+    newOp.indexState[OPR_DESTINATION] = OPRS_UNUSED;    // Dest always point to a given position, cannot be indexed
 
     // Remove all spaces and semicolons
     unit.erase(remove(unit.begin(), unit.end(), ' '), unit.end());
@@ -421,9 +434,12 @@ void processConditional(string unit, vector<Operation>* ops, vector<Variable>* v
     op2 = unit.substr(opPosition + BranchTypeToOperator(newOp.bType).length());
 
     // Process the operands
-    newOp.oprState[OPR_DESTINATION] = OPRS_UNUSED;
+    newOp.oprState[OPR_DESTINATION] = OPRS_SCALAR;
     extractOperandInformation(op1, OPR_OP1, &newOp, vars);
     extractOperandInformation(op2, OPR_OP2, &newOp, vars);
+
+    // Add the comment
+    newOp.comments = unit + " (For start)";
 
     // Insert the operation into the list at the given position
     ops->insert(ops->begin() + index, newOp);
@@ -446,61 +462,66 @@ void processForLoop(string unit, vector<Operation>* ops, vector<Variable>* vars,
     // 4. The iterator is incremented. (i++);
     // 5. Branch to 2 always.
     // 6. More code or, perhaps, the end of the program.
-    size_t semicolon, startBracket, endBracket;
-    int startOfFor;
-    Operation* forCondition;        // Stored to set the branch destination
+    size_t terminator, startBracket, endBracket;
+    int startOfFor, forCondition;
     Operation forEnd;               // A branch to the for condition at the end of the for
     string forContent;
 
     // Fetch the for content
     startBracket = unit.find("{");
-    endBracket = unit.find("}");
+    endBracket = findClosingBracket(unit, startBracket);
     if (startBracket == string::npos || endBracket == string::npos) throw runtime_error(ERROR_FOR_BRACKETS + unit);
-    forContent = unit.substr(startBracket, endBracket - startBracket - 1);
-    unit.erase(startBracket, endBracket - startBracket);
+    forContent = unit.substr(startBracket + 1, endBracket - startBracket - 1);
+    unit.erase(startBracket, endBracket - startBracket + 1);
 
-    // Remove the for start, at this point we already know this is a for
+    // Remove the for start and end parentheses, at this point we already know this is a for
     if (unit.find("for(") != string::npos) unit.erase(0, 4);
     else if (unit.find("for (") != string::npos) unit.erase(0, 5);
 
-    // Find the first semicolon
-    semicolon = unit.find(";");
-    if (semicolon == string::npos) throw runtime_error(ERROR_MALFORMED_FOR + unit);
+    // Find the first terminator
+    terminator = unit.find(";");
+    if (terminator == string::npos) throw runtime_error(ERROR_MALFORMED_FOR + unit);
 
     // Process the iterator initialization (step 1)
-    processOperation(unit.substr(0, semicolon), ops, vars, index);
-    unit.erase(0, semicolon);
+    processOperation(unit.substr(0, terminator), ops, vars, index);
+    unit.erase(0, terminator + 1);
     index++;
     startOfFor = index;
 
-    // Find the second semicolon
-    semicolon = unit.find(";");
-    if (semicolon == string::npos) throw runtime_error(ERROR_MALFORMED_FOR + unit);
+    // Find the second terminator
+    terminator = unit.find(";");
+    if (terminator == string::npos) throw runtime_error(ERROR_MALFORMED_FOR + unit);
 
     // Process the condition (step 2)
-    processOperation(unit.substr(0, semicolon), ops, vars, index);
-    forCondition = &ops->at(index);
+    processConditional(unit.substr(0, terminator), ops, vars, index);
+    forCondition = index;
     index++;
+    unit.erase(0, terminator + 1);
 
     // The code inside of the loop is processed recursively (step 3)
     processCode(forContent, ops, vars, index);
     index = ops->size();                    // An undefined number of elements has been added, update the index
 
     // The iterator gets incremented (step 4)
-    semicolon = unit.find(";");
-    if (semicolon == string::npos) throw runtime_error(ERROR_MALFORMED_FOR + unit);
-    processOperation(unit.substr(0, semicolon), ops, vars, index);
+    terminator = unit.find(")");
+    if (terminator == string::npos) throw runtime_error(ERROR_MALFORMED_FOR + unit);
+    processOperation(unit.substr(0, terminator), ops, vars, index);
     index++;
 
     // Add the branch to step 2 by hand (step 5)
-    forEnd.bType = B_AL;
     forEnd.opType = OP_BRANCH;
+    forEnd.bType = B_AL;
     forEnd.operands[OPR_DESTINATION] = startOfFor;
+    forEnd.oprState[OPR_DESTINATION] = OPRS_SCALAR;
+    forEnd.oprState[OPR_OP1] = OPRS_UNUSED;
+    forEnd.oprState[OPR_OP2] = OPRS_UNUSED;
+    forEnd.indexState[OPR_DESTINATION] = OPRS_UNUSED;
+    forEnd.comments = "For end";
     ops->insert(ops->begin() + index, forEnd);
     index++;
 
     // Set the for to branch to outside the for if the condition in step 2 is not met
-    forCondition->operands[OPR_DESTINATION] = index; 
+    (*ops)[forCondition].operands[OPR_DESTINATION] = (uintptr_t) index; 
 }
 
 /**

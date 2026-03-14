@@ -167,6 +167,7 @@ int main(int argc, char** argv) {
                 } else {
                     gui->renderError(errorMessage.c_str(), &errorHappened);
                     trace.clear();
+                    if (!errorHappened) state = MAIN_WORKSPACE; // If the user has toggled the error message, return to the previous menu
                 }
                 break;
 

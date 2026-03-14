@@ -377,13 +377,12 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
                     ImGui::TableNextColumn();
 
                     // Name of the operation. On branches also add the branch type
-                    ImGui::Text("%s", OperationTypeToString(op.opType).c_str());
-                    if (op.opType == OP_BRANCH) ImGui::Text("%s", BranchTypeToString(op.bType).c_str());
+                    (op.opType == OP_BRANCH) ? ImGui::Text("%s%s", OperationTypeToString(op.opType).c_str(), BranchTypeToString(op.bType).c_str()) : ImGui::Text("%s", OperationTypeToString(op.opType).c_str());
                     ImGui::TableNextColumn();
 
                     // If there is a destination, add it 
                     if (op.oprState[OPR_DESTINATION] != OPRS_UNUSED) {
-                        ref = ((Variable*) op.operands[OPR_DESTINATION])->name;
+                        ref = (op.oprState[OPR_DESTINATION] == OPRS_VARIABLE) ? ((Variable*) op.operands[OPR_DESTINATION])->name : to_string(op.operands[OPR_DESTINATION]);
                         // If there is an index, add it as well
                         if (op.indexState[OPR_DESTINATION] != OPRS_UNUSED) {
                             index = (op.indexState[OPR_DESTINATION] == OPRS_VARIABLE) ? ((Variable*) op.indexes[OPR_DESTINATION])->name : to_string(op.indexes[OPR_DESTINATION]);
@@ -399,7 +398,7 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
                         if (op.indexState[OPR_OP1] != OPRS_UNUSED) {
                             index = (op.indexState[OPR_OP1] == OPRS_VARIABLE) ? ((Variable*) op.indexes[OPR_OP1])->name : to_string(op.indexes[OPR_OP1]);
                         }
-                        (op.oprState[OPR_OP1] == OPRS_VARIABLE) ? ImGui::Text("%s[%s]", ref.c_str(), index.c_str()) : ImGui::Text("%s", ref.c_str());
+                        (op.indexState[OPR_OP1] != OPRS_UNUSED) ? ImGui::Text("%s[%s]", ref.c_str(), index.c_str()) : ImGui::Text("%s", ref.c_str());
                     }
                     ref.clear();
                     index.clear();
@@ -411,7 +410,7 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
                         if (op.indexState[OPR_OP2] != OPRS_UNUSED) {
                             index = (op.indexState[OPR_OP2] == OPRS_VARIABLE) ? ((Variable*) op.indexes[OPR_OP2])->name : to_string(op.indexes[OPR_OP2]);
                         }
-                        (op.oprState[OPR_OP2] == OPRS_VARIABLE) ? ImGui::Text("%s[%s]", ref.c_str(), index.c_str()) :ImGui::Text("%s", ref.c_str());
+                        (op.indexState[OPR_OP2] != OPRS_UNUSED) ? ImGui::Text("%s[%s]", ref.c_str(), index.c_str()) :ImGui::Text("%s", ref.c_str());
                     }
                     ImGui::TableNextColumn();
 

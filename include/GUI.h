@@ -8,6 +8,7 @@
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
 #include "ImGuiFileDialog.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include "Font.h"
 #include "Misc.h"
 #include "Semantics.h"
@@ -15,14 +16,14 @@
 // Proportions and placement of each window respective to the workspace
 // Picker window
 #define PICKER_WINDOW_WIDTH  0.70
-#define PICKER_WINDOW_HEIGHT 0.27
+#define PICKER_WINDOW_HEIGHT 0.30
 
 #define FILE_PICKER_WINDOW_WIDTH  0.5
 #define FILE_PICKER_WINDOW_HEIGHT 0.5
 
-// Error window
-#define ERROR_WINDOW_WIDTH  0.40
-#define ERROR_WINDOW_HEIGHT 0.23
+// Message window
+#define MESSAGE_WINDOW_WIDTH  0.40
+#define MESSAGE_WINDOW_HEIGHT 0.23
 
 #define DEFAULT_TABLE_FLAGS ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_RowBg
 
@@ -44,8 +45,7 @@ public:
     GUI();
     ~GUI();
     SDL_Window* getWindow();
-    void renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state);
-    void renderError(const char* message, bool* toggle);
-    void renderInfo(const char* message, bool* toggle);
-    void renderMainWorkspace(string code, string* trace, vector<Operation>* ops, vector<Variable>* variables, GeneratorSettings* settings, ProgramState* state);
+    void renderPicker(GeneratorSettings& settings, ProgramState& state);
+    void renderMessage(string message, bool isError = true);
+    void renderMainWorkspace(string& code, string& trace, vector<Operation>& ops, vector<Variable>& variables, GeneratorSettings& settings, ProgramState& state);
 };

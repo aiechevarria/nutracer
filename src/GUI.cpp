@@ -1,5 +1,6 @@
 #include "GUI.h"
 #include "Logo.cpp"
+#include "Misc.h"
 
 ImFont* defaultFont;
 
@@ -93,10 +94,11 @@ GLuint GUI::LoadImageFromCSource(const unsigned char* rawData, int width, int he
 
 /**
  * Renders the file picker.
- * @param inputPath Pointer to a sufficiently large array of characters for the input path
- * @param state Pointer to the current state of the program. Switches to the next assistant step when clicked
+
+ * @param settings The generator settings, for the config and input paths
+ * @param state The current state of the program. Switches to the next assistant step when clicked
  */
-void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state) {
+void GUI::renderPicker(GeneratorSettings& settings, ProgramState& state) {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     // Set a size and position based on the current workspace dimms
@@ -129,23 +131,43 @@ void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state) {
         ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
         IGFD::FileDialogConfig config;
         config.path = '.';
-		ImGuiFileDialog::Instance()->OpenDialog("ChooseInputFile", "Choose Input File", ".ntg", config);
+		ImGuiFileDialog::Instance()->OpenDialog("ChooseInputPath", "Choose Input File", ".nt,.txt,.c,.*", config);
     }
 
     ImGui::SameLine();
     ImGui::SetNextItemWidth(-FLT_MIN);          // Make the input below take all avaiable width
-    ImGui::InputText("##InputPicker", inputPath, MAX_PATH_LENGTH);
+    ImGui::InputText("##InputPicker", &settings.inputPath);
 
     // File picker dialog
-    if (ImGuiFileDialog::Instance()->Display("ChooseInputFile", ImGuiWindowFlags_NoCollapse, ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
+    if (ImGuiFileDialog::Instance()->Display("ChooseInputPath", ImGuiWindowFlags_NoCollapse, ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
-            strncpy(inputPath, ImGuiFileDialog::Instance()->GetFilePathName().c_str(), MAX_PATH_LENGTH);
+            settings.inputPath = ImGuiFileDialog::Instance()->GetFilePathName();
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // Render the file picker button
+    if (ImGui::Button("Pick config file", ImVec2(125.0f, 0.0f))) {
+        ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
+        IGFD::FileDialogConfig config;
+        config.path = '.';
+		ImGuiFileDialog::Instance()->OpenDialog("ChooseConfigPath", "Choose Config File", ".ini", config);
+    }
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(-FLT_MIN);          // Make the input below take all avaiable width
+    ImGui::InputText("##ConfigPicker", &settings.configPath);
+
+    // File picker dialog
+    if (ImGuiFileDialog::Instance()->Display("ChooseConfigPath", ImGuiWindowFlags_NoCollapse, ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            settings.configPath = ImGuiFileDialog::Instance()->GetFilePathName();
         }
         ImGuiFileDialog::Instance()->Close();
     }
 
     // Once submit has been clicked
-    if (ImGui::Button("Submit", ImVec2(125.0f, 0.0f))) *state = READ_FILE;
+    if (ImGui::Button("Submit", ImVec2(125.0f, 0.0f))) state = READ_FILE;
 
     ImGui::EndGroup();
 
@@ -153,75 +175,43 @@ void GUI::renderPicker(char inputPath[MAX_PATH_LENGTH], ProgramState* state) {
 }
 
 /**
- * Displays an error box with the provided message.
+ * Displays a message box with the provided message.
  * 
- * @param message The message to display
- * @param toggle Boolean variable to toggle when the close button is pressed
+ * @param message The message to display.
+ * @param isError If true, a red exclamation will get displayed, if false, a blue information sign.
  */
-void GUI::renderError(const char* message, bool* toggle) {
+void GUI::renderMessage(string message, bool isError) {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     // Set a size and position based on the current workspace dimms
-    ImVec2 windowSize(windowWidth * ERROR_WINDOW_WIDTH, windowHeight * ERROR_WINDOW_HEIGHT);
+    ImVec2 windowSize(windowWidth * MESSAGE_WINDOW_WIDTH, windowHeight * MESSAGE_WINDOW_HEIGHT);
     ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
-    ImVec2 windowPos((windowWidth / 2 - windowWidth * ERROR_WINDOW_WIDTH / 2), (windowHeight / 2 - windowHeight * ERROR_WINDOW_HEIGHT / 2));
+    ImVec2 windowPos((windowWidth / 2 - windowWidth * MESSAGE_WINDOW_WIDTH / 2), (windowHeight / 2 - windowHeight * MESSAGE_WINDOW_HEIGHT / 2));
     ImGui::SetNextWindowPos(windowPos, ImGuiCond_Once);
 
     ImGui::Begin("Error");
-    // Draw a red, 5 times larger than usual exclamation and reset the style after doing so 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f)); 
+    // Draw 5 times larger than usual exclamation / information sing and reset the style after doing so 
     ImGui::SetWindowFontScale(5.0f); 
-    ImGui::Text("!");
+    if (isError) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f)); 
+        ImGui::Text("!");
+        ImGui::PopStyleColor();
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.3f, 1.0f, 1.0f)); 
+        ImGui::Text("i");
+        ImGui::PopStyleColor();
+    }
     ImGui::SetWindowFontScale(1.0f);
-    ImGui::PopStyleColor();
 
     ImGui::SameLine();
     ImGui::BeginGroup();
     ImGui::Dummy(ImVec2(0.0f, 15.0f));
-    ImGui::TextWrapped("%s", message);
+    ImGui::TextWrapped("%s", message.c_str());
     ImGui::EndGroup();
 
     ImGui::Separator();
-    if (ImGui::Button("Ok")) {
-        *toggle = !*toggle;
-    }
 
-    ImGui::End();
-}
-
-/**
- * Displays an info box with the provided message.
- * 
- * @param message The message to display
- * @param toggle Boolean variable to toggle when the close button is pressed
- */
-void GUI::renderInfo(const char* message, bool* toggle) {
-    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-
-    // Set a size and position based on the current workspace dimms
-    ImVec2 windowSize(windowWidth * ERROR_WINDOW_WIDTH, windowHeight * ERROR_WINDOW_HEIGHT);
-    ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
-    ImVec2 windowPos((windowWidth / 2 - windowWidth * ERROR_WINDOW_WIDTH / 2), (windowHeight / 2 - windowHeight * ERROR_WINDOW_HEIGHT / 2));
-    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Once);
-
-    ImGui::Begin("Information");
-    // Draw a red, 5 times larger than usual exclamation and reset the style after doing so 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.3f, 0.9f, 1.0f)); 
-    ImGui::SetWindowFontScale(5.0f); 
-    ImGui::Text("i");
-    ImGui::SetWindowFontScale(1.0f);
-    ImGui::PopStyleColor();
-
-    ImGui::SameLine();
-    ImGui::BeginGroup();
-    ImGui::Dummy(ImVec2(0.0f, 15.0f));
-    ImGui::TextWrapped("%s", message);
-    ImGui::EndGroup();
-
-    ImGui::Separator();
-    if (ImGui::Button("Ok")) {
-        *toggle = !*toggle;
-    }
+    if (ImGui::Button("Ok")) message.clear();
 
     ImGui::End();
 }
@@ -233,9 +223,9 @@ void GUI::renderInfo(const char* message, bool* toggle) {
  * @param trace The trace that has been generated
  * @param variables The variables that have been parsed from the code.
  * @param settings The settings of the generator.
- * @param run If the user has clicked on the run button or not
+ * @param state If the user has clicked on the run button or not
  */
-void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops, vector<Variable>* variables, GeneratorSettings* settings, ProgramState* state) {
+void GUI::renderMainWorkspace(string& code, string& trace, vector<Operation>& ops, vector<Variable>& variables, GeneratorSettings& settings, ProgramState& state) {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     // Set a size and position based on the current workspace dimms
@@ -273,7 +263,7 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
         ImGui::TableHeadersRow();
 
         // Populate rows
-        for (Variable& var : *variables) {
+        for (Variable& var : variables) {
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
@@ -301,9 +291,9 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
 
     ImGui::Text("Page Base Address (must match page_base_address in the Nucachis config) 0x");
     ImGui::SameLine();
-    ImGui::InputScalar("## BaseSimAddr", ImGuiDataType_U64, &settings->baseAddr, nullptr, nullptr, "%016llX", ImGuiInputTextFlags_CharsHexadecimal);
+    ImGui::InputScalar("## BaseSimAddr", ImGuiDataType_U64, &settings.baseAddr, nullptr, nullptr, "%016llX", ImGuiInputTextFlags_CharsHexadecimal);
 
-    ImGui::Checkbox("Add comments to the trace", &settings->addComments);
+    ImGui::Checkbox("Add comments to the trace", &settings.addComments);
 
     if (ImGui::Button("Destination file", ImVec2(125.0f, 0.0f))) {
         ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
@@ -314,12 +304,12 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
 
     ImGui::SameLine();
     ImGui::SetNextItemWidth(-FLT_MIN);          // Make the input below take all avaiable width
-    ImGui::InputText("##DestPicker", settings->destPath, MAX_PATH_LENGTH);
+    ImGui::InputText("##DestPicker", &settings.savePath, MAX_PATH_LENGTH);
 
     // File picker dialog
     if (ImGuiFileDialog::Instance()->Display("ChooseDestFile", ImGuiWindowFlags_NoCollapse, ImVec2(0.0f, 0.0f), ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
-            strncpy(settings->destPath, ImGuiFileDialog::Instance()->GetFilePathName().c_str(), MAX_PATH_LENGTH);
+            settings.savePath = ImGuiFileDialog::Instance()->GetFilePathName();
         }
         ImGuiFileDialog::Instance()->Close();
     }
@@ -328,9 +318,9 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
     ImVec2 leftAvail = ImGui::GetContentRegionAvail();
     ImGui::Dummy(ImVec2(0.0f, leftAvail.y - ImGui::GetFrameHeight() - 20.0f));
 
-    if (ImGui::Button("Generate Trace", ImVec2(125.0f, 0.0f))) *state = GENERATE_TRACE;
+    if (ImGui::Button("Generate Trace", ImVec2(125.0f, 0.0f))) state = GENERATE_TRACE;
     ImGui::SameLine();
-    ImGui::BeginDisabled(trace->empty()); if (ImGui::Button("Save Trace")) *state = SAVE_TRACE; ImGui::EndDisabled();
+    ImGui::BeginDisabled(trace.empty()); if (ImGui::Button("Save Trace")) state = SAVE_TRACE; ImGui::EndDisabled();
 
     ImGui::EndChild();
 
@@ -346,7 +336,7 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
         if (ImGui::BeginTabItem("Trace Preview")) {
             ImGui::PushFont(defaultFont);               // Switch to the default monospace font
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-            ImGui::InputTextMultiline("##trace", (char*) trace->c_str(), trace->size() + 1, ImVec2(rightAvail.x, rightAvail.y - 30.0f), ImGuiInputTextFlags_ReadOnly);
+            ImGui::InputTextMultiline("##trace", (char*) trace.c_str(), trace.size() + 1, ImVec2(rightAvail.x, rightAvail.y - 30.0f), ImGuiInputTextFlags_ReadOnly);
             ImGui::PopStyleVar();
             ImGui::PopFont();
             ImGui::EndTabItem();
@@ -366,7 +356,7 @@ void GUI::renderMainWorkspace(string code, string* trace, vector<Operation>* ops
                 int pc = 0;
 
                 // Populate rows
-                for (Operation& op : *ops) {
+                for (Operation& op : ops) {
                     string ref, index;
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn(); 

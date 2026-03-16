@@ -42,13 +42,13 @@ vector<string> getMatchingLines(const string& text, const string& pattern) {
  * @param inputPath The path to the file
  * @return string The parsed file
  */
-string readFileToString(char inputPath[MAX_PATH_LENGTH]) {
+string readFileToString(string inputPath) {
     char buffer[BUFFER_SIZE];
     string result;
     size_t bytesRead;
 
     // Open the file
-    FILE* file = fopen(inputPath, "r");
+    FILE* file = fopen(inputPath.c_str(), "r");
     
     // Validate the file has been opened
     if (!file) {
@@ -83,11 +83,11 @@ string readFileToString(char inputPath[MAX_PATH_LENGTH]) {
  * @param filePath The path to the file.
  * @param content The content to store.
  */
-void writeStringToFile(char* filePath, string& content) {
+void writeStringToFile(string filePath, string& content) {
     // Check the file path is not empty
     if (filePath[0] == '\0') throw runtime_error(ERROR_FILE_SAVE_EMPTY);
 
-    FILE* file = fopen(filePath, "w");
+    FILE* file = fopen(filePath.c_str(), "w");
 
     if (file == NULL) throw runtime_error(ERROR_FILE_SAVE_EMPTY);
 
@@ -99,7 +99,39 @@ void writeStringToFile(char* filePath, string& content) {
 }
 
 /**
+ * Parses variable addresses from the arguments. Throws and exception if
+ * 
+ * @param vars List of all the variables in the input file
+ * @param args String with all the variable arguments
+ * @throws runtime_error When there is no address for the variable
+ */
+void parseVariableArgs(vector<Variable>& vars, vector<string> args) {
+    size_t separator;
+    bool isAddressSet;
+
+    for (Variable& v: vars) {
+        isAddressSet = false;
+
+        for (string s: args) {
+            // For each string, fetch the name
+            separator = s.find("=");
+            
+            // If the name of the variable is between the arguments provided, store the value provided.
+            if (v.name == s.substr(0, separator)) {
+                v.address = stoul(s.substr(separator + 1), nullptr, 16); 
+                isAddressSet = true;
+                break;
+            }
+        }
+
+        // If it has not been found throw an exception for that address
+        if (!isAddressSet) throw runtime_error(ERROR_CLI_VARIABLES + v.name + "\n");
+    }
+}
+
+/**
  * Extracts the variables from the pseudocode.
+ *
  * @param text The text to extract the variables from
  * @param variables A vector that stores all variables in the order they have been parsed
  */

@@ -68,9 +68,9 @@ typedef enum {
 
 // The representation of a variable
 typedef struct {
-    unsigned long address;  // The address of the variable. Stablished by the user
+    unsigned long address;      // The address of the variable
     string name;
-    DataType type;          // The number of bytes the array 
+    DataType type;              // The number of bytes the array 
 } Variable;
 
 // The representation of a for loop

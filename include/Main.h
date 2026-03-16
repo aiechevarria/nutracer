@@ -10,6 +10,9 @@
 #include "Interpreter.h"
 
 typedef struct {
-    string inputFile;
+    string inputPath, configPath, savePath;
+    vector<string> variableAddresses;
     bool debug = false;
+    bool addComments = false;
+    bool noGui = false;
 } AppArgs;

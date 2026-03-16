@@ -150,15 +150,14 @@ string OperandTypeToString(OperandType type) {
 unsigned long getDataTypeSize(DataType dt) {
     switch (dt) {
         case TYPE_CHAR: 
-            return 1;
         case TYPE_SHORT:
-            return 2;
+        case TYPE_LONG:
+        case TYPE_DOUBLE:
+            printf("Warning: Datatypes that are not 4 bytes in size are not currently supported by NuCachis. %s will be treated as 4 bytes in size.\n", DataTypeToString(dt).c_str());
         case TYPE_INT:
         case TYPE_FLOAT:
             return 4;
-        case TYPE_LONG:
-        case TYPE_DOUBLE:
-            return 8;
+            
         default:
             return 0;
     }

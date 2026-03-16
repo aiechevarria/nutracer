@@ -27,6 +27,7 @@ set(IMGUI_SOURCES
     lib/imgui/imgui_widgets.cpp
     lib/imgui/backends/imgui_impl_sdl2.cpp
     lib/imgui/backends/imgui_impl_opengl3.cpp
+    lib/imgui/misc/cpp/imgui_stdlib.cpp
 )
 
 # ImGuiFileDialog source files

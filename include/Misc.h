@@ -31,6 +31,10 @@ using namespace std;
 #define INFO_FILE_SAVED             "Info: File has successfully been saved!\n"
 
 // Error Messages
+// CLI
+#define ERROR_CLI_FILES             "Error: Input, config or save files were not defined.\n"
+#define ERROR_CLI_VARIABLES         "Error: The following variable address is missing:\n"
+
 // Files
 #define ERROR_FILE_OPEN             "Error: Failed to open file or file descriptor.\n"
 #define ERROR_FILE_READ             "Error: Could not read the full file.\n"
@@ -70,6 +74,6 @@ typedef struct {
     unsigned long baseAddr;     // NuCachis inits memory addresses with incremental numbers starting from the base address. This ensures correctness with the results
     unsigned long pageSize;     // The maximum simulated number of bytes in NuCachis memory
     unsigned int wordWidth;     // The word width from the trace in bits
-    char* destPath;
+    string inputPath, configPath, savePath;
     bool addComments;
 } GeneratorSettings;

@@ -68,18 +68,10 @@ typedef enum {
 
 // The representation of a variable
 typedef struct {
-    unsigned long address;      // The address of the variable
+    uint64_t address;      // The address of the variable
     string name;
     DataType type;              // The number of bytes the array 
 } Variable;
-
-// The representation of a for loop
-typedef struct {
-    Variable* iterator;
-    long startValue;
-    long limitValue;
-    long step;
-} ForLoop;
 
 // The representation of an operation that will get interpreted.
 typedef struct {
@@ -87,7 +79,7 @@ typedef struct {
     BranchType bType;       // Only for branches
     string comments;        // For parser or interpreter added comments on the operation
 
-    // uintptr_t can contain both pointers to variables or unsigned long scalars. It can be casted in a C-like style safely
+    // uintptr_t can contain both pointers to variables or uint64_t scalars. It can be casted in a C-like style safely
     // An instruction can have 2 (dest, op1) or 3 (dest, op1, op2) operands
     uintptr_t operands[OPR_COUNT];
     
@@ -107,5 +99,5 @@ string BranchTypeToString(BranchType type);
 string BranchTypeToOperator(BranchType type);
 string BranchTypeToOpositeOperator(BranchType type);
 string StatementOperatorToString(OperationType opType, StatementType staType);
-unsigned long getDataTypeSize(DataType dt);
+uint64_t getDataTypeSize(DataType dt);
 Variable* getVariableByName(vector<Variable>& vars, string name);

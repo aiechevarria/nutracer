@@ -145,9 +145,9 @@ string OperandTypeToString(OperandType type) {
  * Gets the size of a datatype in bytes
  * 
  * @param dt The datatype
- * @return unsigned long 
+ * @return uint64_t 
  */
-unsigned long getDataTypeSize(DataType dt) {
+uint64_t getDataTypeSize(DataType dt) {
     switch (dt) {
         case TYPE_CHAR: 
         case TYPE_SHORT:

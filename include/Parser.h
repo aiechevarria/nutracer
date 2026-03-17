@@ -11,4 +11,4 @@ void writeStringToFile(string filePath, string& content);
 void parseVariableArgs(vector<Variable>& vars, vector<string> args);
 void parseVariables(string text, vector<Variable>& variables);
 void preProcessCode(string& code);
-void processCode(string code, vector<Operation>& ops, vector<Variable>& vars, int index);
+void processCode(string code, vector<Operation>& ops, vector<Variable>& vars, uint32_t index);

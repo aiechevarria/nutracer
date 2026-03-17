@@ -71,9 +71,9 @@ typedef enum {
 } ProgramState;
 
 typedef struct {
-    unsigned long baseAddr;     // NuCachis inits memory addresses with incremental numbers starting from the base address. This ensures correctness with the results
-    unsigned long pageSize;     // The maximum simulated number of bytes in NuCachis memory
-    unsigned int wordWidth;     // The word width from the trace in bits
+    uint64_t baseAddr;     // NuCachis inits memory addresses with incremental numbers starting from the base address. This ensures correctness with the results
+    uint64_t pageSize;     // The maximum simulated number of bytes in NuCachis memory
+    uint32_t wordWidth;    // The word width from the trace in bits
     string inputPath, configPath, savePath;
     bool addComments;
 } GeneratorSettings;

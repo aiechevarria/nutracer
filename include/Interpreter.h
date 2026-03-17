@@ -10,7 +10,7 @@
 
 // Groups the memory, trace and settings for ease of use
 typedef struct {
-    unordered_map<unsigned long, unsigned long>* memMap;
+    unordered_map<uint64_t, uint64_t>* memMap;
     GeneratorSettings settings;
     string* trace;
 } TraceData;

@@ -7,9 +7,9 @@
  * @param settings The settings of the simulator
  */
 void initMemory(TraceData& td) {
-    unsigned long currentWord = td.settings.baseAddr;
-    unsigned long iter = 0;
-    unsigned int wordWidth = td.settings.wordWidth / 8;        // Word width converted to bytes 
+    uint64_t currentWord = td.settings.baseAddr;
+    uint64_t iter = 0;
+    uint32_t wordWidth = td.settings.wordWidth / 8;        // Word width converted to bytes 
 
     // Fill the memory with values until the whole simulated page size is initialized
     while (currentWord <= td.settings.baseAddr + td.settings.pageSize) {
@@ -27,9 +27,9 @@ void initMemory(TraceData& td) {
  * @param td The trace data
  * @param addr The address to read
  * @param comment Optional comment to add to the line 
- * @return unsigned long The value of that address
+ * @return uint64_t The value of that address
  */
-unsigned long readMemory(TraceData& td, unsigned long addr, string comment = "") {
+uint64_t readMemory(TraceData& td, uint64_t addr, string comment = "") {
     char buffer[32];
     // Add the access to the trace, and a comment if available
     sprintf(buffer, "L 0x%lx D", addr);
@@ -47,7 +47,7 @@ unsigned long readMemory(TraceData& td, unsigned long addr, string comment = "")
  * @param addr The address to read
  * @param comment Optional comment to add to the line 
  */
-void writeMemory(TraceData& td, unsigned long addr, unsigned long value, string comment = "") {
+void writeMemory(TraceData& td, uint64_t addr, uint64_t value, string comment = "") {
     char buffer[32];
     // Add the access to the trace, and a comment if available
     sprintf(buffer, "S 0x%lx D %lu", addr, value);
@@ -64,16 +64,16 @@ void writeMemory(TraceData& td, unsigned long addr, unsigned long value, string 
  * @param td 
  * @param op 
  * @param type 
- * @return unsigned long 
+ * @return uint64_t 
  */
-unsigned long fetchOperandAddress(TraceData& td, Operation& op, OperandType type) {
-    unsigned long index;
+uint64_t fetchOperandAddress(TraceData& td, Operation& op, OperandType type) {
+    uint64_t index;
     Variable* indexVar = (Variable*) op.indexes[type];
     Variable* oprVar = (Variable*) op.operands[type];
 
     // Get the index depending on the indexing type and apply the datatype size
     if (op.indexState[type] == OPRS_SCALAR) {
-        index = ((unsigned long) op.indexes[type]); 
+        index = ((uint64_t) op.indexes[type]); 
     } else if (op.indexState[type] == OPRS_VARIABLE) {
         // If the variable is indexed by another variable, get the index first and then address the content of the var
         index = readMemory(td, indexVar->address, indexVar->name);
@@ -91,11 +91,11 @@ unsigned long fetchOperandAddress(TraceData& td, Operation& op, OperandType type
  * @param memMap The map of modified memory addresses 
  * @param op The operation
  * @param type The operand to check
- * @return unsigned long The content of the operand, 0 if it is not used. It is up to the caller to check if the result is valid by comparing to OPRS_UNUSED.
+ * @return uint64_t The content of the operand, 0 if it is not used. It is up to the caller to check if the result is valid by comparing to OPRS_UNUSED.
  */
-unsigned long fetchOperandValue(TraceData& td, Operation& op, OperandType type) {
+uint64_t fetchOperandValue(TraceData& td, Operation& op, OperandType type) {
     switch (op.oprState[type]) {
-        case OPRS_SCALAR:   return (unsigned long) op.operands[type];
+        case OPRS_SCALAR:   return (uint64_t) op.operands[type];
         case OPRS_VARIABLE: return readMemory(td, fetchOperandAddress(td, op, type), ((Variable*) op.operands[type])->name);
         default:            return 0;       // Does not matter, the caller should check if this is valid
     }
@@ -112,12 +112,13 @@ unsigned long fetchOperandValue(TraceData& td, Operation& op, OperandType type) 
 void interpretCode(string code, string& trace, vector<Operation>& ops, vector<Variable>& variables, GeneratorSettings settings) {
     // Because stores need to have an actual value to store and the contents of memory/caches cannot be viewed at this point,
     // we need to store all modified data in a struct.
-    unordered_map<unsigned long, unsigned long> memMap;
-    unsigned long result;
+    unordered_map<uint64_t, uint64_t> memMap;
+    uint64_t result;
+    uint64_t opr1, opr2;                                // The two operands
+    uint32_t pc = 0;                                    // The program counter
     bool takeBranch;
     TraceData td;
-    int pc = 0;                                             // The program counter
-    unsigned long opr1, opr2;                               // The two operands
+    
 
     // Group all the interpretation data and trace in a single struct
     td.memMap = &memMap;

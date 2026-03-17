@@ -202,7 +202,7 @@ void preProcessCode(string& code) {
  */
 size_t findClosingBracket(string code, size_t startBracket) {
     // Bracket counters
-    int bracketCount = 0;
+    uint32_t bracketCount = 0;
 
     // Start scanning from the opening bracket
     for (size_t i = startBracket; i < code.length(); ++i) {
@@ -312,7 +312,7 @@ void extractOperandInformation(string unit, OperandType ot, Operation& op, vecto
     }
 
     if (debug) printf("Debug:   Extracted %s, operand=0x%lu, operandState=%d, index=0x%lu, indexState=%d\n", OperandTypeToString(ot).c_str(), 
-                        (unsigned long) op.operands[ot], op.oprState[ot], (unsigned long) op.indexes[ot], op.indexState[ot]);
+                        (uint64_t) op.operands[ot], op.oprState[ot], (uint64_t) op.indexes[ot], op.indexState[ot]);
 }
 
 /**
@@ -323,7 +323,7 @@ void extractOperandInformation(string unit, OperandType ot, Operation& op, vecto
  * @param vars Pointer to a vector with all the variables to process.
  * @param index The index in which to insert the operation. The caller is responsible of incrementing it afterwards
  */
-void processOperation(string unit, vector<Operation>& ops, vector<Variable>& vars, int index) {
+void processOperation(string unit, vector<Operation>& ops, vector<Variable>& vars, uint32_t index) {
     Operation newOp;
     string dest, op1, op2;     // The extracted operand text
     size_t pos = string::npos; // The position that caused a match
@@ -439,7 +439,7 @@ void processOperation(string unit, vector<Operation>& ops, vector<Variable>& var
  * @param vars 
  * @param index 
  */
-void processConditional(string unit, vector<Operation>& ops, vector<Variable>& vars, int index) {
+void processConditional(string unit, vector<Operation>& ops, vector<Variable>& vars, uint32_t index) {
     Operation newOp;
     string op1, op2;                                    // The extracted operand text
     size_t opPosition;
@@ -487,7 +487,7 @@ void processConditional(string unit, vector<Operation>& ops, vector<Variable>& v
  * @param vars Pointer to a vector with all the variables to process.
  * @param index The index in which to insert the operation. The caller is responsible of incrementing it afterwards
  */
-void processForLoop(string unit, vector<Operation>& ops, vector<Variable>& vars, int index) {
+void processForLoop(string unit, vector<Operation>& ops, vector<Variable>& vars, uint32_t index) {
     // For loops are decomposed into the following:
     // for (int i = 0; i < 10; i++)
     // 1. The iterator gets initialized (int i = 0). This happens only once
@@ -497,7 +497,7 @@ void processForLoop(string unit, vector<Operation>& ops, vector<Variable>& vars,
     // 5. Branch to 2 always.
     // 6. More code or, perhaps, the end of the program.
     size_t terminator, startBracket, endBracket;
-    int startOfFor, forCondition;
+    uint32_t startOfFor, forCondition;
     Operation forEnd;               // A branch to the for condition at the end of the for
     string forContent;
 
@@ -566,7 +566,7 @@ void processForLoop(string unit, vector<Operation>& ops, vector<Variable>& vars,
  * @param vars Pointer to a vector with all the variables to process.
  * @param index Index to start inserting the code instuctions.
  */
-void processCode(string code, vector<Operation>& ops, vector<Variable>& vars, int index) {
+void processCode(string code, vector<Operation>& ops, vector<Variable>& vars, uint32_t index) {
     // Iterate over all the code lines
     while (!code.empty()) {
         // Extract the next piece of code to process

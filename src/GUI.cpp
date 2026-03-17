@@ -353,7 +353,7 @@ void GUI::renderMainWorkspace(string& code, string& trace, vector<Operation>& op
                 ImGui::TableSetupColumn("Comment", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableHeadersRow();
 
-                int pc = 0;
+                uint32_t pc = 0;
 
                 // Populate rows
                 for (Operation& op : ops) {

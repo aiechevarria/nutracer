@@ -66,11 +66,21 @@ typedef enum {
     STATEMENT_COUNT
 } StatementType;
 
+// How often should a variable be accessed in the trace
+typedef enum {
+    VAR_ACCESS_ALWAYS,
+    VAR_ACCESS_ONCE,
+    VAR_ACCESS_NEVER,
+    VAR_ACCESS_COUNT
+} VariableAccessFrequency;
+
 // The representation of a variable
 typedef struct {
-    uint64_t address;      // The address of the variable
     string name;
-    DataType type;              // The number of bytes the array 
+    uint64_t address;               // The address of the variable
+    DataType type;                  // The datatype of the variable
+    VariableAccessFrequency freq;   // How often it should be represented on the trace
+    bool hasBeenAccessed = false;   // If it has already been accessed
 } Variable;
 
 // The representation of an operation that will get interpreted.

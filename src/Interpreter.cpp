@@ -25,16 +25,21 @@ void initMemory(TraceData& td) {
  * Reads from memory and appends to the trace.
  * 
  * @param td The trace data
- * @param addr The address to read
- * @param comment Optional comment to add to the line 
+ * @param address The address to read
+ * @param offset The offset that should be applied to the variable's base address
  * @return uint64_t The value of that address
  */
-uint64_t readMemory(TraceData& td, uint64_t addr, string comment = "") {
+uint64_t readMemory(TraceData& td, Variable& var, uint64_t offset) {
     char buffer[32];
-    // Add the access to the trace, and a comment if available
-    sprintf(buffer, "L 0x%lx D", addr);
-    td.trace->append(buffer);
-    (!comment.empty() && td.settings.addComments) ? td.trace->append("\t\t # " + comment + "\n") : td.trace->append("\n");
+    uint64_t addr = var.address + offset;
+
+    // If the access should be noted, add the access to the trace, and a comment if available
+    if (var.freq == VAR_ACCESS_ALWAYS || (var.freq == VAR_ACCESS_ONCE && !var.hasBeenAccessed)) {
+        var.hasBeenAccessed = true;
+        sprintf(buffer, "L 0x%lx D", addr);
+        td.trace->append(buffer);
+        (td.settings.addComments) ? td.trace->append("\t\t # " + var.name + "\n") : td.trace->append("\n");
+    }
 
     // Lastly, return the memory address' content
     return (*td.memMap)[addr];
@@ -45,14 +50,21 @@ uint64_t readMemory(TraceData& td, uint64_t addr, string comment = "") {
  * 
  * @param td The trace data
  * @param addr The address to read
+ * @param value The value to store
+ * @param log If the access should be noted in the trace 
  * @param comment Optional comment to add to the line 
  */
-void writeMemory(TraceData& td, uint64_t addr, uint64_t value, string comment = "") {
+void writeMemory(TraceData& td, Variable& var, uint64_t offset, uint64_t value) {
     char buffer[32];
-    // Add the access to the trace, and a comment if available
-    sprintf(buffer, "S 0x%lx D %lu", addr, value);
-    td.trace->append(buffer);
-    (!comment.empty() && td.settings.addComments) ? td.trace->append("\t # " + comment + "\n") : td.trace->append("\n");
+    uint64_t addr = var.address + offset;
+
+    // If the access should be noted, add the access to the trace, and a comment if available
+    if (var.freq == VAR_ACCESS_ALWAYS || (var.freq == VAR_ACCESS_ONCE && !var.hasBeenAccessed)) {
+        var.hasBeenAccessed = true;
+        sprintf(buffer, "S 0x%lx D %lu", addr, value);
+        td.trace->append(buffer);
+        (td.settings.addComments) ? td.trace->append("\t # " + var.name + "\n") : td.trace->append("\n");
+    }
 
     // Lastly, update the memory
     (*td.memMap)[addr] = value;
@@ -66,7 +78,7 @@ void writeMemory(TraceData& td, uint64_t addr, uint64_t value, string comment = 
  * @param type 
  * @return uint64_t 
  */
-uint64_t fetchOperandAddress(TraceData& td, Operation& op, OperandType type) {
+uint64_t fetchOperandOffset(TraceData& td, Operation& op, OperandType type) {
     uint64_t index;
     Variable* indexVar = (Variable*) op.indexes[type];
     Variable* oprVar = (Variable*) op.operands[type];
@@ -76,13 +88,13 @@ uint64_t fetchOperandAddress(TraceData& td, Operation& op, OperandType type) {
         index = ((uint64_t) op.indexes[type]); 
     } else if (op.indexState[type] == OPRS_VARIABLE) {
         // If the variable is indexed by another variable, get the index first and then address the content of the var
-        index = readMemory(td, indexVar->address, indexVar->name);
+        index = readMemory(td, *indexVar, 0);
     } else {
         index = 0;
     }
 
     // Calculate the address with the offset applied
-    return oprVar->address + index * getDataTypeSize(oprVar->type);
+    return index * getDataTypeSize(oprVar->type);
 }
 
 /**
@@ -94,9 +106,11 @@ uint64_t fetchOperandAddress(TraceData& td, Operation& op, OperandType type) {
  * @return uint64_t The content of the operand, 0 if it is not used. It is up to the caller to check if the result is valid by comparing to OPRS_UNUSED.
  */
 uint64_t fetchOperandValue(TraceData& td, Operation& op, OperandType type) {
+    Variable* oprVar = (Variable*) op.operands[type];
+
     switch (op.oprState[type]) {
         case OPRS_SCALAR:   return (uint64_t) op.operands[type];
-        case OPRS_VARIABLE: return readMemory(td, fetchOperandAddress(td, op, type), ((Variable*) op.operands[type])->name);
+        case OPRS_VARIABLE: return readMemory(td, *oprVar, fetchOperandOffset(td, op, type));
         default:            return 0;       // Does not matter, the caller should check if this is valid
     }
 }
@@ -117,8 +131,8 @@ void interpretCode(string code, string& trace, vector<Operation>& ops, vector<Va
     uint64_t opr1, opr2;                                // The two operands
     uint32_t pc = 0;                                    // The program counter
     bool takeBranch;
+    bool shouldBeLogged;
     TraceData td;
-    
 
     // Group all the interpretation data and trace in a single struct
     td.memMap = &memMap;
@@ -137,7 +151,7 @@ void interpretCode(string code, string& trace, vector<Operation>& ops, vector<Va
 
     // Interpret until the end of the instructions is reached
     while (ops[pc].opType != OP_END) {
-        if (settings.addComments) trace.append("# " + ops[pc].comments + "\n");
+        if (settings.addComments) trace.append("\n# " + ops[pc].comments + "\n");
         // Fetch the operands' values
         opr1 = fetchOperandValue(td, ops[pc], OPR_OP1);
         opr2 = fetchOperandValue(td, ops[pc], OPR_OP2);
@@ -154,7 +168,7 @@ void interpretCode(string code, string& trace, vector<Operation>& ops, vector<Va
             }
 
             // Store in memory the result of the operation and increment the pc
-            writeMemory(td, fetchOperandAddress(td, ops[pc], OPR_DESTINATION), result, ops[pc].comments);
+            writeMemory(td, *((Variable*) ops[pc].operands[OPR_DESTINATION]), fetchOperandOffset(td, ops[pc], OPR_DESTINATION), result);
             trace.append("\n");
 
             pc++;

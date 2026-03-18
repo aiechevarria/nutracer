@@ -99,13 +99,45 @@ void writeStringToFile(string filePath, string& content) {
 }
 
 /**
- * Parses variable addresses from the arguments. Throws and exception if
+ * Parses variable access frequency from the arguments.
+ * 
+ * @param vars List of all the variables in the input file
+ * @param args String with all the arguments
+ * @throws runtime_error When the argument does not match a type
+ */
+void parseFrequencyArgs(vector<Variable>& vars, vector<string> args) {
+    for (Variable& v: vars) {
+        for (string s: args) {
+            // Fetch the variable name, frequency and lower case it
+            size_t separator = s.find("=");
+            string freq = s.substr(separator + 1);
+            transform(freq.begin(), freq.end(), freq.begin(), ::tolower);
+
+            // If the name of the variable matches, map the frequency to the variable.
+            if (v.name == s.substr(0, separator)) {
+                if (freq == "always") {
+                    v.freq = VAR_ACCESS_ALWAYS;
+                } else if (freq == "once") {
+                    v.freq = VAR_ACCESS_ONCE;
+                } else if (freq == "never") {
+                    v.freq = VAR_ACCESS_NEVER;
+                } else {
+                    throw runtime_error(ERROR_CLI_FREQUENCY + freq + "\n");
+                }
+                break;
+            }
+        }
+    }
+}
+
+/**
+ * Parses variable addresses from the arguments. Throws and exception 
  * 
  * @param vars List of all the variables in the input file
  * @param args String with all the variable arguments
- * @throws runtime_error When there is no address for the variable
+ * @throws runtime_error When there is no address for a given variable
  */
-void parseVariableArgs(vector<Variable>& vars, vector<string> args) {
+void parseAddressArgs(vector<Variable>& vars, vector<string> args) {
     size_t separator;
     bool isAddressSet;
 
@@ -160,7 +192,7 @@ void parseVariables(string text, vector<Variable>& variables) {
                 if (match.size() >= 2) {
                     // Capture the name and store the variable
                     string varName = match[1];
-                    variables.push_back(Variable{0, varName, (DataType) d});
+                    variables.push_back(Variable{varName, 0, (DataType) d, VAR_ACCESS_ALWAYS});
 
                     if(debug) printf("Debug: Found variable with name=%s, type=%s\n", varName.c_str(), DataTypeToString(type).c_str());
                 }

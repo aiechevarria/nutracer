@@ -24,6 +24,8 @@ AppArgs parseArguments(int argc, char** argv) {
     
     app.add_option("-v, --variable", args.variableAddresses, "Define a variable's base address (NAME=0x80)")->take_all();
 
+    app.add_option("-f, --frequency", args.variableAccessFrequency, "Define a variable's access frequency (always, once, never) (NAME=always)")->take_all();
+
     app.add_flag("-g,--nogui", args.noGui, "Disable the GUI");
 
     app.add_flag("-m, --comments", args.addComments, "Add comments to the trace");
@@ -51,6 +53,7 @@ AppArgs parseArguments(int argc, char** argv) {
 void generateTrace(string code, string& trace, vector<Operation>& ops, vector<Variable>& variables, GeneratorSettings settings) {
     // Clear previous trace instances
     trace.clear();
+    for (Variable& var: variables) var.hasBeenAccessed = false;
 
     // Preprocess the code prior to extracting units
     preProcessCode(code);
@@ -135,7 +138,8 @@ int main(int argc, char** argv) {
 
             // Validate that all variables have an address
             try {
-                parseVariableArgs(variables, args.variableAddresses);
+                parseAddressArgs(variables, args.variableAddresses);
+                parseFrequencyArgs(variables, args.variableAccessFrequency);
             } catch (const runtime_error& e) {
                 fprintf(stderr, e.what());
                 return 1;

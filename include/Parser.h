@@ -8,7 +8,8 @@
 bool hasString(string unit, string content);
 string readFileToString(string inputPath);
 void writeStringToFile(string filePath, string& content);
-void parseVariableArgs(vector<Variable>& vars, vector<string> args);
+void parseFrequencyArgs(vector<Variable>& vars, vector<string> args);
+void parseAddressArgs(vector<Variable>& vars, vector<string> args);
 void parseVariables(string text, vector<Variable>& variables);
 void preProcessCode(string& code);
 void processCode(string code, vector<Operation>& ops, vector<Variable>& vars, uint32_t index);

@@ -255,13 +255,15 @@ void GUI::renderMainWorkspace(string& code, string& trace, vector<Operation>& op
     ImGui::Text("In hexadecimal, set the addresses of the variables listed below before generating a trace:");
 
     // Render the variable table
-    if (ImGui::BeginTable("VariableTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg )) {
+    if (ImGui::BeginTable("VariableTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable )) {
         // Headers
         ImGui::TableSetupColumn("Variable Name");
         ImGui::TableSetupColumn("Datatype");
+        ImGui::TableSetupColumn("Access Frequency");
         ImGui::TableSetupColumn("Address (In hexadecimal)");
         ImGui::TableHeadersRow();
 
+        uint32_t id = 0;
         // Populate rows
         for (Variable& var : variables) {
             ImGui::TableNextRow();
@@ -273,11 +275,18 @@ void GUI::renderMainWorkspace(string& code, string& trace, vector<Operation>& op
             ImGui::Text("%s", DataTypeToString(var.type).c_str());
 
             ImGui::TableNextColumn();
+            const char* freqs[] = {"Always", "Once", "Never"};
+            ImGui::PushID(id);
+            ImGui::Combo("", (int*) &var.freq, freqs, VAR_ACCESS_COUNT);
+            ImGui::PopID();
+
+            ImGui::TableNextColumn();
             ImGui::TextUnformatted("0x");
             ImGui::SameLine();
             ImGui::PushFont(defaultFont);               // Switch to the default monospace font
             ImGui::InputScalar(("##" + var.name).c_str(), ImGuiDataType_U64, &var.address, nullptr, nullptr, "%016llX", ImGuiInputTextFlags_CharsHexadecimal);
             ImGui::PopFont();
+            id++;
         }
 
         ImGui::EndTable();

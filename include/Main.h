@@ -11,7 +11,7 @@
 
 typedef struct {
     string inputPath, configPath, savePath;
-    vector<string> variableAddresses;
+    vector<string> variableAddresses, variableAccessFrequency;
     bool debug = false;
     bool addComments = false;
     bool noGui = false;

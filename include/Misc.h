@@ -34,6 +34,7 @@ using namespace std;
 // CLI
 #define ERROR_CLI_FILES             "Error: Input, config or save files were not defined.\n"
 #define ERROR_CLI_VARIABLES         "Error: The following variable address is missing:\n"
+#define ERROR_CLI_FREQUENCY         "Error: Unknown variable frequency:\n"
 
 // Files
 #define ERROR_FILE_OPEN             "Error: Failed to open file or file descriptor.\n"

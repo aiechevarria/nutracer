@@ -107,7 +107,7 @@ void GUI::renderPicker(InterpreterSettings& settings, ProgramState& state) {
     ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver);
     
     // Render the window
-    ImGui::Begin("Welcome to NuTracegen", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Welcome to NuTracer", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 
     // Center the logo
     ImGui::Image((ImTextureID)(intptr_t)logo, ImVec2(logoData.width / 4, logoData.height / 4));
@@ -122,7 +122,7 @@ void GUI::renderPicker(InterpreterSettings& settings, ProgramState& state) {
     ImGui::Text(APP_WEB);
 
     // Leave y pixels of vertical separation
-    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+    ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
     ImGui::Text("Please, pick an input file:");
 
     // Render the file picker button
@@ -204,7 +204,7 @@ void GUI::renderMessage(string& message, bool isError) {
 
     ImGui::SameLine();
     ImGui::BeginGroup();
-    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+    ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
     ImGui::TextWrapped("%s", message.c_str());
     ImGui::EndGroup();
 
@@ -235,117 +235,111 @@ void GUI::renderMainWorkspace(string& code, string& trace, vector<Operation>& op
     ImGui::Begin("Trace generation", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus);
     // Render the left side of the window
     ImGui::BeginChild("LeftPanel", ImVec2(windowWidth / 2, 0), true);
-    ImVec2 leftDimms = ImGui::GetContentRegionAvail();
+        ImVec2 leftAvail = ImGui::GetContentRegionAvail();
     
-    // Render the code in a bordered box
-    ImGui::Text("Code Preview:");
-    ImGui::PushFont(defaultFont);               // Switch to the default monospace font
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::InputTextMultiline("##code", (char*) code.c_str(), code.size() + 1, ImVec2(leftDimms.x, leftDimms.y / 3), ImGuiInputTextFlags_ReadOnly);
-    ImGui::PopStyleVar();
-    ImGui::PopFont();
-
-    ImGui::Dummy(ImVec2(0.0f, 15.0f));
-    ImGui::Separator();
-    ImGui::Dummy(ImVec2(0.0f, 15.0f));
-    
-    // Render the variable table
-    ImGui::Text("Variable configuration");
-    ImGui::Text("In hexadecimal, set the addresses of the variables listed below before generating a trace:");
-
-    // Render the variable table
-    if (ImGui::BeginTable("VariableTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable )) {
-        // Headers
-        ImGui::TableSetupColumn("Variable Name");
-        ImGui::TableSetupColumn("Datatype");
-        ImGui::TableSetupColumn("Access Frequency");
-        ImGui::TableSetupColumn("Address (In hexadecimal)", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableHeadersRow();
-
-        uint32_t id = 0;
-        // Populate rows
-        for (Variable& var : variables) {
-            ImGui::TableNextRow();
-
-            ImGui::TableNextColumn();
-            ImGui::Text("%s", var.name.c_str());
-
-            ImGui::TableNextColumn();
-            ImGui::Text("%s", dataTypeToString(var.type).c_str());
-
-            ImGui::TableNextColumn();
-            const char* freqs[] = {"Always", "Once", "Never"};
-            ImGui::PushID(id);
-            ImGui::Combo("", (int*) &var.freq, freqs, VAR_ACCESS_COUNT);
-            ImGui::PopID();
-
-            ImGui::TableNextColumn();
-            ImGui::TextUnformatted("0x");
-            ImGui::SameLine();
+        // Render the code in a bordered box
+        ImGui::BeginChild("Code", ImVec2(leftAvail.x, leftAvail.y * CODE_WINDOW_HEIGHT));
+            ImGui::Text("Code Preview");
+            ImVec2 codeAvail = ImGui::GetContentRegionAvail();
             ImGui::PushFont(defaultFont);               // Switch to the default monospace font
-            ImGui::InputScalar(("##" + var.name).c_str(), ImGuiDataType_U64, &var.address, nullptr, nullptr, "%llX", ImGuiInputTextFlags_CharsHexadecimal);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+            ImGui::InputTextMultiline("##code", (char*) code.c_str(), code.size() + 1, ImVec2(leftAvail.x, ImGui::GetContentRegionAvail().y), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleVar();
             ImGui::PopFont();
-            id++;
-        }
+        ImGui::EndChild();
 
-        ImGui::EndTable();
-    }
+        ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
+    
+        // Render the variable table
+        ImGui::BeginChild("Variables", ImVec2(leftAvail.x, leftAvail.y * VAR_WINDOW_HEIGHT));
+            ImGui::Text("Variable configuration");
+            ImGui::Text("In hexadecimal, set the addresses of the variables listed below before generating a trace:");
 
-    ImGui::Dummy(ImVec2(0.0f, 15.0f));
-    ImGui::Separator();
-    ImGui::Dummy(ImVec2(0.0f, 15.0f));
+            // Render the variable table
+            if (ImGui::BeginTable("VariableTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable )) {
+                // Headers
+                ImGui::TableSetupColumn("Variable Name");
+                ImGui::TableSetupColumn("Datatype");
+                ImGui::TableSetupColumn("Access Frequency");
+                ImGui::TableSetupColumn("Address (In hexadecimal)", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
 
-    ImGui::Text("Generation settings");
-    ImGui::Checkbox("Add comments to the trace", &settings.addComments);
+                uint32_t id = 0;
+                // Populate rows
+                for (Variable& var : variables) {
+                    ImGui::TableNextRow();
 
-    if (ImGui::Button("Destination file", ImVec2(125.0f, 0.0f))) {
-        ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
-        IGFD::FileDialogConfig config;
-        config.path = '.';
-		ImGuiFileDialog::Instance()->OpenDialog("ChooseDestFile", "Choose Dest File", ".vca", config);
-    }
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", var.name.c_str());
 
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(-FLT_MIN);          // Make the input below take all avaiable width
-    ImGui::InputText("##DestPicker", &settings.savePath, MAX_PATH_LENGTH);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", dataTypeToString(var.type).c_str());
 
-    // File picker dialog
-    if (ImGuiFileDialog::Instance()->Display("ChooseDestFile", ImGuiWindowFlags_NoCollapse, ImVec2(0.0f, 0.0f), ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            settings.savePath = ImGuiFileDialog::Instance()->GetFilePathName();
-        }
-        ImGuiFileDialog::Instance()->Close();
-    }
+                    ImGui::TableNextColumn();
+                    const char* freqs[] = {"Always", "Once", "Never"};
+                    ImGui::PushID(id);
+                    ImGui::Combo("", (int*) &var.freq, freqs, VAR_ACCESS_COUNT);
+                    ImGui::PopID();
 
-    // Push the buttons to the bottom
-    ImVec2 leftAvail = ImGui::GetContentRegionAvail();
-    ImGui::Dummy(ImVec2(0.0f, leftAvail.y - ImGui::GetFrameHeight() - 20.0f));
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted("0x");
+                    ImGui::SameLine();
+                    ImGui::PushFont(defaultFont);               // Switch to the default monospace font
+                    ImGui::InputScalar(("##" + var.name).c_str(), ImGuiDataType_U64, &var.address, nullptr, nullptr, "%llX", ImGuiInputTextFlags_CharsHexadecimal);
+                    ImGui::PopFont();
+                    id++;
+                }
+                ImGui::EndTable();
+            }
+        ImGui::EndChild();
 
-    if (ImGui::Button("Generate Trace", ImVec2(125.0f, 0.0f))) state = GENERATE_TRACE;
-    ImGui::SameLine();
-    ImGui::BeginDisabled(trace.empty()); if (ImGui::Button("Save Trace")) state = SAVE_TRACE; ImGui::EndDisabled();
+        ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
 
+        // Render the generation settings
+        leftAvail = ImGui::GetContentRegionAvail();
+
+        ImGui::BeginChild("GenerationSettings", ImVec2(leftAvail.x, leftAvail.y));
+            ImGui::Text("Generation settings");
+            ImGui::Checkbox("Add comments to the trace", &settings.addComments);
+
+            if (ImGui::Button("Destination file", ImVec2(125.0f, 0.0f))) {
+                ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
+                IGFD::FileDialogConfig config;
+                config.path = '.';
+		        ImGuiFileDialog::Instance()->OpenDialog("ChooseDestFile", "Choose Dest File", ".vca", config);
+            }
+
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(-FLT_MIN);          // Make the input below take all avaiable width
+            ImGui::InputText("##DestPicker", &settings.savePath, MAX_PATH_LENGTH);
+
+            // File picker dialog
+            if (ImGuiFileDialog::Instance()->Display("ChooseDestFile", ImGuiWindowFlags_NoCollapse, ImVec2(0.0f, 0.0f), ImVec2(windowWidth * FILE_PICKER_WINDOW_WIDTH, windowHeight * FILE_PICKER_WINDOW_HEIGHT))) {
+                if (ImGuiFileDialog::Instance()->IsOk()) {
+                    settings.savePath = ImGuiFileDialog::Instance()->GetFilePathName();
+                }
+                ImGuiFileDialog::Instance()->Close();
+            }
+
+            if (ImGui::Button("Generate Trace", ImVec2(125.0f, 0.0f))) state = GENERATE_TRACE;
+            ImGui::SameLine();
+            ImGui::BeginDisabled(trace.empty()); if (ImGui::Button("Save Trace")) state = SAVE_TRACE; ImGui::EndDisabled();
+        ImGui::EndChild();
     ImGui::EndChild();
 
     ImGui::SameLine();
 
     // Render the right side of the window
+    
     ImGui::BeginChild("RightPanel", ImVec2(0, 0), true);
-    ImVec2 rightDimms = ImGui::GetContentRegionAvail();
-    ImVec2 rightAvail = ImGui::GetContentRegionAvail();
-
-
-    if (ImGui::BeginTabBar("TabbedRight")) {
-        if (ImGui::BeginTabItem("Trace Preview")) {
-            ImGui::PushFont(defaultFont);               // Switch to the default monospace font
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-            ImGui::InputTextMultiline("##trace", (char*) trace.c_str(), trace.size() + 1, ImVec2(rightAvail.x, rightAvail.y - 30.0f), ImGuiInputTextFlags_ReadOnly);
-            ImGui::PopStyleVar();
-            ImGui::PopFont();
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("Operation Preview")) {
+        ImVec2 rightAvail = ImGui::GetContentRegionAvail();
+        // Split it in two panels
+        ImGui::BeginChild("Ops", ImVec2(rightAvail.x, rightAvail.y * OPS_WINDOW_HEIGHT));
+            ImGui::Text("Operations");
             if (ImGui::BeginTable("OperationTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable )) {
                 // Headers
                 ImGui::TableSetupColumn("PC");
@@ -412,13 +406,21 @@ void GUI::renderMainWorkspace(string& code, string& trace, vector<Operation>& op
 
                 ImGui::EndTable();
             }
+        ImGui::EndChild();
 
-            ImGui::EndTabItem();
-        }
+        ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, SEPARATOR_HEIGHT));
 
-        ImGui::EndTabBar();
-    }
-
+        ImGui::BeginChild("Trace", ImVec2(0, 0));
+            ImGui::Text("Trace");
+            rightAvail = ImGui::GetContentRegionAvail();
+            ImGui::PushFont(defaultFont);               // Switch to the default monospace font
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+            ImGui::InputTextMultiline("##trace", (char*) trace.c_str(), trace.size() + 1, ImVec2(rightAvail.x, rightAvail.y - 0.0f), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleVar();
+            ImGui::PopFont();
+        ImGui::EndChild();
     ImGui::EndChild();
 
     ImGui::End();
